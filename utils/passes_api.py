@@ -90,7 +90,7 @@ class PostFilter:
         ):
             return False
 
-        post_timestamp = datetime.fromisoformat(post["createdAt"]).replace(tzinfo=None)
+        post_timestamp = datetime.fromisoformat(post["createdAt"].rstrip("Z"))
 
         if not from_timestamp <= post_timestamp <= to_timestamp:
             return False
