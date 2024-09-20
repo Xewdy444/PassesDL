@@ -1,5 +1,4 @@
 # Project specific
-config.toml
 media/
 
 # Ruff
