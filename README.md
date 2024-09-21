@@ -55,24 +55,20 @@ Options:
 
 ## Examples
 Download images and videos from posts in a user's feed:
-```bash
-$ python main.py --user thebigpodwithshaq
-```
+
+    $ python main.py --user thebigpodwithshaq
 
 Download images and videos from the three most recent accessible posts in a user's feed:
-```bash
-$ python main.py --user thebigpodwithshaq --limit 3
-```
+
+    $ python main.py --user thebigpodwithshaq --limit 3
 
 Download images and videos from a list of post URLs:
-```bash
-$ python main.py --urls https://www.passes.com/thebigpodwithshaq/fb697c54-2f63-41f0-bdbe-9afd95026566 https://www.passes.com/thebigpodwithshaq/619074e2-22e2-4a70-8bf0-13ae0d2da33e https://www.passes.com/texasonefund/71d233df-0091-4149-8cdf-2f3b6789c07f
-```
+
+    $ python main.py --urls https://www.passes.com/thebigpodwithshaq/fb697c54-2f63-41f0-bdbe-9afd95026566 https://www.passes.com/thebigpodwithshaq/619074e2-22e2-4a70-8bf0-13ae0d2da33e https://www.passes.com/texasonefund/71d233df-0091-4149-8cdf-2f3b6789c07f
 
 Download videos from a file containing a list of post URLs:
-```bash
-$ python main.py --file urls.txt --videos
-```
+
+    $ python main.py --file urls.txt --videos
 
 ```
 urls.txt:
@@ -84,6 +80,5 @@ https://www.passes.com/texasonefund/71d233df-0091-4149-8cdf-2f3b6789c07f
 ```
 
 Download images from posts in a user's feed from a specific time range:
-```bash
-$ python main.py --user texasonefund --images --from 2024-07-01T00:00:00 --to 2024-08-31T23:59:59
-```
+    
+    $ python main.py --user texasonefund --images --from 2024-07-01T00:00:00 --to 2024-08-31T23:59:59
