@@ -195,7 +195,7 @@ async def main() -> None:
         posts = await passes.get_feed(
             args.user,
             limit=args.limit,
-            post_filter=PostFilter.from_arguments(
+            post_filter=PostFilter(
                 images=not args.only_videos,
                 videos=not args.only_images,
                 accessible_only=True,

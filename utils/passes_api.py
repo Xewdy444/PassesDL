@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import logging
 import re
 from datetime import datetime
@@ -25,74 +24,80 @@ logger = logging.getLogger(__name__)
 
 
 class PostFilter:
-    """A class for filtering Passes posts."""
+    """
+    A class for filtering Passes posts.
 
-    @classmethod
-    def from_arguments(cls, **kwargs: Any) -> Callable[[Post], bool]:
-        """
-        Create a post filter callable with predefined arguments.
+    Parameters
+    ----------
+    post : Post
+        The post to filter.
+    images : bool, optional
+        Whether to filter posts with images, by default False.
+    videos : bool, optional
+        Whether to filter posts with videos, by default False.
+    accessible_only : bool, optional
+        Whether to filter posts with accessible media only, by default False.
+    from_timestamp : datetime, optional
+        The minimum timestamp for posts to filter, by default datetime.min.
+    to_timestamp : datetime, optional
+        The maximum timestamp for posts to filter, by default datetime.max.
+    """
 
-        Parameters
-        ----------
-        kwargs : Any
-            The arguments to create the post filter with.
-
-        Returns
-        -------
-        Callable[[Post], bool]
-            The post filter function.
-        """
-        return functools.partial(cls.__call__, **kwargs)
-
-    @staticmethod
-    def __call__(
-        post: Post,
+    def __init__(
+        self,
         *,
         images: bool = False,
         videos: bool = False,
         accessible_only: bool = False,
         from_timestamp: datetime = datetime.min,
         to_timestamp: datetime = datetime.max,
-    ) -> bool:
+    ) -> None:
+        self.images = images
+        self.videos = videos
+        self.accessible_only = accessible_only
+        self.from_timestamp = from_timestamp
+        self.to_timestamp = to_timestamp
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}"
+            f"(images={self.images!r}, "
+            f"videos={self.videos!r}, "
+            f"accessible_only={self.accessible_only!r}, "
+            f"from_timestamp={self.from_timestamp!r}, "
+            f"to_timestamp={self.to_timestamp!r})"
+        )
+
+    def __call__(self, post: Post) -> bool:
         """
-        Filter a post based on criteria.
+        Determine whether a post meets the filter criteria.
 
         Parameters
         ----------
         post : Post
             The post to filter.
-        images : bool, optional
-            Whether to filter posts with images, by default False.
-        videos : bool, optional
-            Whether to filter posts with videos, by default False.
-        accessible_only : bool, optional
-            Whether to filter posts with accessible media only, by default False.
-        from_timestamp : datetime, optional
-            The minimum timestamp for posts to filter, by default datetime.min.
-        to_timestamp : datetime, optional
-            The maximum timestamp for posts to filter, by default datetime.max.
 
         Returns
         -------
         bool
             Whether the post meets the filter criteria.
         """
-        if any((images, videos)) and not (
-            images
+        if any((self.images, self.videos)) and not (
+            self.images
             and any(content["contentType"] == "image" for content in post["contents"])
-            or videos
+            or self.videos
             and any(content["contentType"] == "video" for content in post["contents"])
         ):
             return False
 
-        if accessible_only and not any(
+        if self.accessible_only and not any(
             "signedContent" in content for content in post["contents"]
         ):
             return False
 
         post_timestamp = datetime.fromisoformat(post["createdAt"].rstrip("Z"))
 
-        if not from_timestamp <= post_timestamp <= to_timestamp:
+        if not self.from_timestamp <= post_timestamp <= self.to_timestamp:
             return False
 
         return True
