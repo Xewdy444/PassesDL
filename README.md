@@ -14,6 +14,17 @@ This tool requires FFmpeg to be installed on your system to download videos.
 
 You can also download the latest static build from [here](https://ffmpeg.org/download.html).
 
+## Authorization
+You will need to provide a refresh token or account credentials in the `config.toml` file. If you sign in directly with the website, you can provide your email and password in the configuration file, and the tool will automatically obtain a new refresh token when needed. If you use a third-party service to sign in to your account (Google, Facebook, X, Twitch), you'll need to do the following to obtain a refresh token:
+
+1. Open the developer tools in your browser (F12)
+2. Go to the "Network" tab
+3. Sign in to your account with the third-party service
+4. In the "Network" tab, find the request with the URL `https://www.passes.com/auth/success`
+5. Within the query parameters of the request, you'll find the `refreshToken` parameter. Copy the value of this parameter and paste it into the `refresh_token` field in the configuration file
+
+Refresh tokens expire after two weeks, so you'll need to update it periodically.
+
 ## Usage
 ```
 Usage: main.py [-h] (-u USER | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-s {small,medium,large}] [-fd] [-ncf] [-i | -v]
