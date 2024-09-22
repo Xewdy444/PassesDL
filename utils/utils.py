@@ -25,7 +25,8 @@ class ImageSize(Enum):
 class Args(BaseModel):
     """A class for representing the arguments passed to the program."""
 
-    user: Optional[str]
+    feed: Optional[str]
+    messages: Optional[str]
     urls: List[HttpUrl]
     file: Optional[FilePath]
     output: Path

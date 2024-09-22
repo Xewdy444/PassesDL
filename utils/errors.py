@@ -15,3 +15,17 @@ class AuthorizationError(Exception):
 
     def __init__(self, message: Optional[str] = None) -> None:
         super().__init__(message or "An authorization error occurred.")
+
+
+class UserNotFoundError(Exception):
+    """An exception raised when a user is not found."""
+
+    def __init__(self, username: str) -> None:
+        super().__init__(f"The user '{username}' was not found.")
+
+
+class ChannelNotFoundError(Exception):
+    """An exception raised when a channel is not found."""
+
+    def __init__(self, username: str) -> None:
+        super().__init__(f"The message channel for user '{username}' was not found.")

@@ -31,11 +31,20 @@ async def main() -> None:
     download_mode_group = parser.add_mutually_exclusive_group(required=True)
 
     download_mode_group.add_argument(
-        "-u",
-        "--user",
+        "--feed",
         default=None,
         type=str,
         help="The username of the user to download media from posts in their feed",
+        metavar="USERNAME",
+    )
+
+    download_mode_group.add_argument(
+        "-m",
+        "--messages",
+        default=None,
+        type=str,
+        help="The username of the user to download media from posts in their messages",
+        metavar="USERNAME",
     )
 
     download_mode_group.add_argument(
@@ -132,8 +141,8 @@ async def main() -> None:
 
     refresh_token, email, password = (
         config["authorization"]["refresh_token"],
-        config["authorization"]["email"],
-        config["authorization"]["password"],
+        config["authorization"]["credentials"]["email"],
+        config["authorization"]["credentials"]["password"],
     )
 
     logging.basicConfig(
@@ -189,11 +198,25 @@ async def main() -> None:
     passes.set_access_token(access_token)
     logger.info("Set access token")
 
-    if args.user is not None:
+    if args.feed is not None:
         logger.info("Fetching posts from user's feed...")
 
         posts = await passes.get_feed(
-            args.user,
+            args.feed,
+            limit=args.limit,
+            post_filter=PostFilter(
+                images=not args.only_videos,
+                videos=not args.only_images,
+                accessible_only=True,
+                from_timestamp=args.from_timestamp,
+                to_timestamp=args.to_timestamp,
+            ),
+        )
+    elif args.messages is not None:
+        logger.info("Fetching posts from user's messages...")
+
+        posts = await passes.get_messages(
+            args.messages,
             limit=args.limit,
             post_filter=PostFilter(
                 images=not args.only_videos,

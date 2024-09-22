@@ -15,7 +15,12 @@ from async_lru import alru_cache
 from ffmpeg.asyncio import FFmpeg
 from tenacity import AsyncRetrying, retry_if_exception
 
-from .errors import AuthorizationError, InvalidURLError
+from .errors import (
+    AuthorizationError,
+    ChannelNotFoundError,
+    InvalidURLError,
+    UserNotFoundError,
+)
 from .utils import ImageSize
 
 Post = Dict[str, Any]
@@ -95,7 +100,8 @@ class PostFilter:
         ):
             return False
 
-        post_timestamp = datetime.fromisoformat(post["createdAt"].rstrip("Z"))
+        post_timestamp_string = post.get("createdAt") or post.get("sentAt")
+        post_timestamp = datetime.fromisoformat(post_timestamp_string.rstrip("Z"))
 
         if not self.from_timestamp <= post_timestamp <= self.to_timestamp:
             return False
@@ -265,7 +271,7 @@ class PassesAPI:
         return response_json["accessToken"]
 
     @alru_cache
-    async def get_user_id(self, username: str) -> str:
+    async def get_user_id(self, username: str) -> Optional[str]:
         """
         Get the user ID associated with a username.
 
@@ -276,17 +282,25 @@ class PassesAPI:
 
         Returns
         -------
-        str
+        Optional[str]
             The user ID associated with the username.
+            Returns None if the user ID could not be found.
         """
         if username in self._username_mapping:
             return self._username_mapping[username]
 
         response = await self._session.post(
-            "https://www.passes.com/api/profile/get", json={"username": username}
+            "https://www.passes.com/api/profile/get",
+            json={"username": username},
+            raise_for_status=False,
         )
 
+        if response.status == 404:
+            return None
+
+        response.raise_for_status()
         response_json = await response.json()
+
         user_id = response_json["user"]["userId"]
         self._username_mapping[username] = user_id
 
@@ -294,7 +308,7 @@ class PassesAPI:
         return user_id
 
     @alru_cache
-    async def get_username(self, user_id: str) -> str:
+    async def get_username(self, user_id: str) -> Optional[str]:
         """
         Get the username associated with a user ID.
 
@@ -305,22 +319,73 @@ class PassesAPI:
 
         Returns
         -------
-        str
+        Optional[str]
             The username associated with the user ID.
+            Returns None if the username could not be found.
         """
         if user_id in self._user_id_mapping:
             return self._user_id_mapping[user_id]
 
         response = await self._session.post(
-            "https://www.passes.com/api/profile/get", json={"creatorId": user_id}
+            "https://www.passes.com/api/profile/get",
+            json={"creatorId": user_id},
+            raise_for_status=False,
         )
 
+        if response.status == 404:
+            return None
+
+        response.raise_for_status()
         response_json = await response.json()
+
         username = response_json["user"]["username"]
         self._username_mapping[username] = user_id
 
         logger.info("Username for %s: %s", user_id, username)
         return username
+
+    @alru_cache
+    async def get_channel_id(self, username: str) -> Optional[str]:
+        """
+        Get the message channel ID associated with a username.
+
+        Parameters
+        ----------
+        username : str
+            The username to get the channel ID for.
+
+        Returns
+        -------
+        Optional[str]
+            The message channel ID.
+            Returns None if the channel ID could not be found.
+        """
+        json_data = {"orderType": "recent", "order": "desc"}
+
+        while True:
+            response = await self._session.post(
+                "https://www.passes.com/api/channel/channels", json=json_data
+            )
+
+            response_json = await response.json()
+
+            for channel in response_json["data"]:
+                if channel["otherUser"]["username"] != username:
+                    continue
+
+                channel_id = channel["channelId"]
+                logger.info("Message channel ID for %s: %s", username, channel_id)
+                return channel_id
+
+            if not response_json["hasMore"]:
+                return None
+
+            json_data.update(
+                {
+                    "recentAt": response_json["recentAt"],
+                    "lastId": response_json["lastId"],
+                }
+            )
 
     async def get_post_from_url(self, post_url: str) -> Post:
         """
@@ -398,8 +463,18 @@ class PassesAPI:
         -------
         List[Post]
             The list of posts in the user's feed.
+
+        Raises
+        ------
+        UserNotFoundError
+            If the user is not found.
         """
-        json_data = {"creatorId": await self.get_user_id(username)}
+        user_id = await self.get_user_id(username)
+
+        if user_id is None:
+            raise UserNotFoundError(username)
+
+        json_data = {"creatorId": user_id}
         posts: List[Post] = []
 
         while True:
@@ -424,6 +499,71 @@ class PassesAPI:
             json_data.update(
                 {
                     "createdAt": response_json["createdAt"],
+                    "lastId": response_json["lastId"],
+                }
+            )
+
+        return posts
+
+    async def get_messages(
+        self,
+        username: str,
+        *,
+        limit: Optional[int] = None,
+        post_filter: Callable[[Post], bool] = PostFilter(),
+    ) -> List[Post]:
+        """
+        Get the messages for a user.
+
+        Parameters
+        ----------
+        username : str
+            The username of the user to get the messages for.
+        limit : int, optional
+            The maximum number of messages to get, by default None.
+        post_filter : Callable[[Post], bool], optional
+            A function to filter messages, by default PostFilter().
+
+        Returns
+        -------
+        List[Post]
+            The list of messages in the user's messages.
+
+        Raises
+        ------
+        ChannelNotFoundError
+            If the message channel is not found.
+        """
+        channel_id = await self.get_channel_id(username)
+
+        if channel_id is None:
+            raise ChannelNotFoundError(username)
+
+        json_data = {"channelId": channel_id, "contentOnly": False, "pending": False}
+        posts: List[Post] = []
+
+        while True:
+            response = await self._session.post(
+                "https://www.passes.com/api/messages/messages", json=json_data
+            )
+
+            response_json = await response.json()
+
+            for post in response_json["data"]:
+                if not post_filter(post):
+                    continue
+
+                posts.append(post)
+
+                if limit is not None and limit == len(posts):
+                    return posts
+
+            if not response_json["hasMore"]:
+                break
+
+            json_data.update(
+                {
+                    "sentAt": response_json["sentAt"],
                     "lastId": response_json["lastId"],
                 }
             )

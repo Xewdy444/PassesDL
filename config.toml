@@ -1,4 +1,6 @@
 [authorization]
 refresh_token = ""
+
+[authorization.credentials]
 email = ""
 password = ""
