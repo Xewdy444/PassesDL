@@ -65,8 +65,7 @@ class PostFilter:
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}"
-            f"(images={self.images!r}, "
+            f"{self.__class__.__name__}(images={self.images!r}, "
             f"videos={self.videos!r}, "
             f"accessible_only={self.accessible_only!r}, "
             f"from_timestamp={self.from_timestamp!r}, "
@@ -344,7 +343,6 @@ class PassesAPI:
         logger.info("Username for %s: %s", user_id, username)
         return username
 
-    @alru_cache
     async def get_channel_id(self, username: str) -> Optional[str]:
         """
         Get the message channel ID associated with a username.
