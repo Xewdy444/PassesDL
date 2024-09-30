@@ -411,7 +411,7 @@ class PassesAPI:
         )
 
         if url_match is None:
-            raise InvalidURLError("Invalid post URL.")
+            raise InvalidURLError(post_url)
 
         return await self.get_post(url_match.group(1), url_match.group(2))
 
@@ -614,7 +614,7 @@ class PassesAPI:
         )
 
         if url_match is None:
-            raise InvalidURLError("Invalid media URL.")
+            raise InvalidURLError(media_url)
 
         if creator_folder:
             username = await self.get_username(url_match.group(3))

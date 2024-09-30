@@ -6,8 +6,8 @@ from typing import Optional
 class InvalidURLError(Exception):
     """An exception raised when an invalid URL is provided."""
 
-    def __init__(self, message: Optional[str] = None) -> None:
-        super().__init__(message or "An invalid URL was provided.")
+    def __init__(self, url: str) -> None:
+        super().__init__(f"The URL '{url}' is invalid.")
 
 
 class AuthorizationError(Exception):
