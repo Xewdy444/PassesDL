@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import aiofiles
 import aiohttp
@@ -203,9 +203,9 @@ class PassesAPI:
         """Close the aiohttp session."""
         await self._session.close()
 
-    async def get_refresh_token(self, email: str, password: str) -> str:
+    async def login(self, email: str, password: str) -> Tuple[str, bool]:
         """
-        Get a refresh token for obtaining an access token.
+        Log in with an email address and password.
 
         Parameters
         ----------
@@ -216,8 +216,9 @@ class PassesAPI:
 
         Returns
         -------
-        str
-            The refresh token.
+        Tuple[str, bool]
+            A tuple containing the temporary access token and True if multi-factor
+            authentication is required, or the refresh token and False if not.
 
         Raises
         ------
@@ -235,7 +236,46 @@ class PassesAPI:
 
         response.raise_for_status()
         response_json = await response.json()
-        return response_json["refreshToken"]
+
+        if "refreshToken" in response_json["tokens"]:
+            return response_json["tokens"]["refreshToken"], False
+
+        return response_json["tokens"]["accessToken"], True
+
+    async def submit_mfa_token(self, access_token: str, mfa_token: str) -> str:
+        """
+        Submit a multi-factor authentication token.
+
+        Parameters
+        ----------
+        access_token : str
+            The temporary access token to use for authentication.
+        mfa_token : str
+            The multi-factor authentication token.
+
+        Returns
+        -------
+        str
+            The refresh token.
+
+        Raises
+        ------
+        AuthorizationError
+            If the multi-factor authentication token is invalid.
+        """
+        response = await self._session.post(
+            "https://www.passes.com/api/auth/check-mfa-token",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"token": mfa_token},
+            raise_for_status=False,
+        )
+
+        if response.status in (400, 401):
+            raise AuthorizationError("Invalid multi-factor authentication token.")
+
+        response.raise_for_status()
+        response_json = await response.json()
+        return response_json["tokens"]["refreshToken"]
 
     async def get_access_token(self, refresh_token: str) -> str:
         """

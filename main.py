@@ -14,9 +14,17 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
+from rich.prompt import Prompt
 from rich_argparse import RichHelpFormatter
 
-from utils import Args, AuthorizationError, ImageSize, PassesAPI, PostFilter
+from utils import (
+    Args,
+    AuthorizationError,
+    ImageSize,
+    MFARequiredError,
+    PassesAPI,
+    PostFilter,
+)
 
 logger = logging.getLogger(__name__)
 traceback.install(show_locals=True)
@@ -156,7 +164,17 @@ async def main() -> None:
 
     if not refresh_token and all((email, password)):
         logger.info("Obtaining refresh token...")
-        refresh_token = await passes.get_refresh_token(email, password)
+        refresh_token, mfa_required = await passes.login(email, password)
+
+        if mfa_required:
+            logger.info("Multi-factor authentication is required")
+
+            mfa_token = Prompt.ask(
+                "[blue]>>>[/blue] Enter the multi-factor authentication code"
+            )
+
+            refresh_token = await passes.submit_mfa_token(refresh_token, mfa_token)
+
         config["authorization"]["refresh_token"] = refresh_token
 
         with open("config.toml", "w", encoding="utf-8") as file:
@@ -178,14 +196,24 @@ async def main() -> None:
 
         if not all((email, password)):
             logger.error(
-                "Provide login credentials or manually update the refresh token"
+                "Please rovide login credentials or manually update the refresh token"
             )
 
             await passes.close()
             return
 
         logger.info("Obtaining a new refresh token with provided credentials...")
-        refresh_token = await passes.get_refresh_token(email, password)
+        refresh_token, mfa_required = await passes.login(email, password)
+
+        if mfa_required:
+            logger.info("Multi-factor authentication is required")
+
+            mfa_token = Prompt.ask(
+                "[blue]>>>[/blue] Enter the multi-factor authentication code"
+            )
+
+            refresh_token = await passes.submit_mfa_token(refresh_token, mfa_token)
+
         config["authorization"]["refresh_token"] = refresh_token
 
         with open("config.toml", "w", encoding="utf-8") as file:
