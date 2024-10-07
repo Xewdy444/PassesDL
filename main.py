@@ -17,14 +17,7 @@ from rich.progress import (
 from rich.prompt import Prompt
 from rich_argparse import RichHelpFormatter
 
-from utils import (
-    Args,
-    AuthorizationError,
-    ImageSize,
-    MFARequiredError,
-    PassesAPI,
-    PostFilter,
-)
+from utils import Args, AuthorizationError, ImageSize, PassesAPI, PostFilter
 
 logger = logging.getLogger(__name__)
 traceback.install(show_locals=True)
@@ -42,7 +35,7 @@ async def main() -> None:
         "--feed",
         default=None,
         type=str,
-        help="The username of the user to download media from posts in their feed",
+        help="Download media from posts in a user's feed",
         metavar="USERNAME",
     )
 
@@ -51,7 +44,16 @@ async def main() -> None:
         "--messages",
         default=None,
         type=str,
-        help="The username of the user to download media from posts in their messages",
+        help="Download media from posts in a user's messages",
+        metavar="USERNAME",
+    )
+
+    download_mode_group.add_argument(
+        "-a",
+        "--all",
+        default=None,
+        type=str,
+        help="Download media from posts in a user's feed and messages",
         metavar="USERNAME",
     )
 
@@ -226,34 +228,38 @@ async def main() -> None:
     passes.set_access_token(access_token)
     logger.info("Set access token")
 
+    post_filter = PostFilter(
+        images=not args.only_videos,
+        videos=not args.only_images,
+        accessible_only=True,
+        from_timestamp=args.from_timestamp,
+        to_timestamp=args.to_timestamp,
+    )
+
     if args.feed is not None:
         logger.info("Fetching posts from user's feed...")
 
         posts = await passes.get_feed(
-            args.feed,
-            limit=args.limit,
-            post_filter=PostFilter(
-                images=not args.only_videos,
-                videos=not args.only_images,
-                accessible_only=True,
-                from_timestamp=args.from_timestamp,
-                to_timestamp=args.to_timestamp,
-            ),
+            args.feed, limit=args.limit, post_filter=post_filter
         )
     elif args.messages is not None:
         logger.info("Fetching posts from user's messages...")
 
         posts = await passes.get_messages(
-            args.messages,
-            limit=args.limit,
-            post_filter=PostFilter(
-                images=not args.only_videos,
-                videos=not args.only_images,
-                accessible_only=True,
-                from_timestamp=args.from_timestamp,
-                to_timestamp=args.to_timestamp,
-            ),
+            args.messages, limit=args.limit, post_filter=post_filter
         )
+    elif args.all is not None:
+        logger.info("Fetching posts from user's feed and messages...")
+
+        feed_posts = await passes.get_feed(
+            args.all, limit=args.limit, post_filter=post_filter
+        )
+
+        message_posts = await passes.get_messages(
+            args.all, limit=args.limit, post_filter=post_filter
+        )
+
+        posts = feed_posts + message_posts
     elif args.file is not None:
         logger.info("Fetching posts from URLs in file...")
 

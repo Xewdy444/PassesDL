@@ -27,15 +27,16 @@ Refresh tokens expire after two weeks, so you'll need to update it periodically.
 
 ## Usage
 ```
-Usage: main.py [-h] (--feed USERNAME | -m USERNAME | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-s {small,medium,large}] [-fd] [-ncf] [-i | -v]
+Usage: main.py [-h] (--feed USERNAME | -m USERNAME | -a USERNAME | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-s {small,medium,large}] [-fd] [-ncf] [-i | -v]
 
 A tool for downloading media from www.passes.com
 
 Options:
   -h, --help            show this help message and exit
-  --feed USERNAME       The username of the user to download media from posts in their feed
+  --feed USERNAME       Download media from posts in a user's feed
   -m, --messages USERNAME
-                        The username of the user to download media from posts in their messages
+                        Download media from posts in a user's messages
+  -a, --all USERNAME    Download media from posts in a user's feed and messages
   --urls, --links URLS [URLS ...]
                         A list of post urls to download media from
   --file FILE           A file containing a list of post urls to download media from

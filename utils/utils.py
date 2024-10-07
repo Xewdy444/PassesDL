@@ -27,6 +27,7 @@ class Args(BaseModel):
 
     feed: Optional[str]
     messages: Optional[str]
+    all: Optional[str]
     urls: List[HttpUrl]
     file: Optional[FilePath]
     output: Path
