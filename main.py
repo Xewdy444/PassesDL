@@ -63,14 +63,14 @@ async def main() -> None:
         nargs="+",
         default=[],
         type=str,
-        help="A list of post urls to download media from",
+        help="A list of post URLs to download media from",
     )
 
     download_mode_group.add_argument(
         "--file",
         default=None,
         type=str,
-        help="A file containing a list of post urls to download media from",
+        help="A file containing a list of post URLs to download media from",
     )
 
     parser.add_argument(
@@ -102,7 +102,10 @@ async def main() -> None:
         "--limit",
         default=None,
         type=int,
-        help="The maximum number of posts in the user's feed to download media from",
+        help=(
+            "The maximum number of posts in the user's feed or messages "
+            "to download media from"
+        ),
     )
 
     parser.add_argument(
@@ -118,7 +121,10 @@ async def main() -> None:
         "-fd",
         "--force-download",
         action="store_true",
-        help="Force downloading the media even if it already exists in the output directory",
+        help=(
+            "Force downloading the media even if it already exists in the "
+            "output directory"
+        ),
     )
 
     parser.add_argument(
@@ -198,7 +204,7 @@ async def main() -> None:
 
         if not all((email, password)):
             logger.error(
-                "Please rovide login credentials or manually update the refresh token"
+                "Please provide login credentials or manually update the refresh token"
             )
 
             await passes.close()

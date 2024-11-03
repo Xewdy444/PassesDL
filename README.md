@@ -1,10 +1,10 @@
 # PassesDL
-A tool for downloading media from www.passes.com. This tool can download images and videos from posts on the website, either by providing the URLs of the posts or by retrieving the posts from a user's feed or messages. The requests are asynchronous, so the download process is fast and efficient.
+A tool for downloading media from www.passes.com. You can download images and videos from posts in a user's feed or messages with some convenient filtering options. The download process is fast and efficient as the requests and file writes are made asynchronously.
 
 ## Installation
     $ pip install -r requirements.txt
 
-This tool requires FFmpeg to be installed on your system to download videos.
+To download videos, you'll need to install FFmpeg.
 
 |   OS    |        Command         |
 | :-----: | :--------------------: |
@@ -38,14 +38,14 @@ Options:
                         Download media from posts in a user's messages
   -a, --all USERNAME    Download media from posts in a user's feed and messages
   --urls, --links URLS [URLS ...]
-                        A list of post urls to download media from
-  --file FILE           A file containing a list of post urls to download media from
+                        A list of post URLs to download media from
+  --file FILE           A file containing a list of post URLs to download media from
   -o, --output OUTPUT   The output directory to save media to
   --from FROM_TIMESTAMP
                         The creation timestamp of posts to start downloading media from
   -t, --to TO_TIMESTAMP
                         The creation timestamp of posts to stop downloading media
-  --limit LIMIT         The maximum number of posts in the user's feed to download media from
+  --limit LIMIT         The maximum number of posts in the user's feed or messages to download media from
   -s, --size {small,medium,large}
                         The size of the images to download
   -fd, --force-download
