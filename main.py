@@ -275,15 +275,19 @@ async def main() -> None:
     elif args.all is not None:
         logger.info("Fetching posts from user's feed and messages...")
 
-        feed_posts = await passes.get_feed(
-            args.all, limit=args.limit, post_filter=post_filter
+        feed_task = asyncio.create_task(
+            passes.get_feed(args.all, limit=args.limit, post_filter=post_filter)
         )
 
-        message_posts = await passes.get_messages(
-            args.all, limit=args.limit, post_filter=post_filter
+        messages_task = asyncio.create_task(
+            passes.get_messages(args.all, limit=args.limit, post_filter=post_filter)
         )
 
-        posts = feed_posts + message_posts
+        results = await asyncio.gather(feed_task, messages_task, return_exceptions=True)
+
+        posts = [
+            item for result in results if isinstance(result, list) for item in result
+        ]
     elif args.file is not None:
         logger.info("Fetching posts from URLs in file...")
 
