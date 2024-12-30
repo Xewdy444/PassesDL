@@ -3,6 +3,7 @@ A tool for downloading media from www.passes.com. You can download images and vi
 
 ## Installation
     $ pip install -r requirements.txt
+    $ python -m patchright install chromium
 
 To download videos, you'll need to install FFmpeg.
 
@@ -13,6 +14,9 @@ To download videos, you'll need to install FFmpeg.
 | Windows | winget install ffmpeg  |
 
 You can also download the latest static build from [here](https://ffmpeg.org/download.html).
+
+> **Note**
+> Make sure to have ffmpeg in your system's PATH so that the tool can access it.
 
 ## Authorization
 You will need to provide a refresh token or account credentials in the `config.toml` file. If you sign in directly with the website, you can provide your email and password in the configuration file, and the tool will automatically obtain a new refresh token when needed. If you use a third-party service to sign in to your account (Google, Facebook, X, Twitch), you'll need to do the following to obtain a refresh token:

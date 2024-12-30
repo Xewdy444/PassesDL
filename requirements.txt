@@ -1,6 +1,8 @@
 aiofiles==24.1.0
 aiohttp==3.11.11
+annotated_types==0.7.0
 async_lru==2.0.4
+patchright==1.49.1
 pydantic==2.10.4
 python_ffmpeg==2.0.12
 rich==13.9.4

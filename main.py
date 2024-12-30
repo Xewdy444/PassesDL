@@ -17,7 +17,14 @@ from rich.progress import (
 from rich.prompt import Prompt
 from rich_argparse import RichHelpFormatter
 
-from utils import Args, AuthorizationError, ImageSize, PassesAPI, PostFilter
+from utils import (
+    Args,
+    AuthorizationError,
+    CaptchaSolverConfig,
+    ImageSize,
+    PassesAPI,
+    PostFilter,
+)
 
 logger = logging.getLogger(__name__)
 traceback.install(show_locals=True)
@@ -161,6 +168,11 @@ async def main() -> None:
         config["authorization"]["credentials"]["password"],
     )
 
+    captcha_solver_config = CaptchaSolverConfig(
+        domain=config["captcha_solver"]["domain"],
+        api_key=config["captcha_solver"]["api_key"],
+    )
+
     logging.basicConfig(
         format="%(message)s",
         datefmt="%H:%M:%S",
@@ -172,7 +184,10 @@ async def main() -> None:
 
     if not refresh_token and all((email, password)):
         logger.info("Obtaining refresh token...")
-        refresh_token, mfa_required = await passes.login(email, password)
+
+        refresh_token, mfa_required = await passes.login(
+            email, password, captcha_solver_config=captcha_solver_config
+        )
 
         if mfa_required:
             logger.info("Multi-factor authentication is required")
@@ -211,7 +226,10 @@ async def main() -> None:
             return
 
         logger.info("Obtaining a new refresh token with provided credentials...")
-        refresh_token, mfa_required = await passes.login(email, password)
+
+        refresh_token, mfa_required = await passes.login(
+            email, password, captcha_solver_config=captcha_solver_config
+        )
 
         if mfa_required:
             logger.info("Multi-factor authentication is required")

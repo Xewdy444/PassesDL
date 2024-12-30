@@ -1,6 +1,10 @@
 [authorization]
 refresh_token = ""
 
+[captcha_solver]
+domain = ""
+api_key = ""
+
 [authorization.credentials]
 email = ""
 password = ""

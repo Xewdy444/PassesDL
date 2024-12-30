@@ -6,22 +6,34 @@ import asyncio
 import logging
 import re
 from datetime import datetime
+from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, ClassVar, Dict, Final, List, Optional, Tuple
 
 import aiofiles
 import aiohttp
 from async_lru import alru_cache
 from ffmpeg.asyncio import FFmpeg
+from patchright.async_api import async_playwright
 from tenacity import AsyncRetrying, retry_if_exception
 
 from .errors import (
     AuthorizationError,
+    CaptchaError,
     ChannelNotFoundError,
     InvalidURLError,
     UserNotFoundError,
 )
-from .utils import ImageSize
+from .utils import CaptchaSolverConfig, ImageSize, StaticResponse
+
+CAPTCHA_TASK_JSON: Final[Dict[str, Dict[str, Any]]] = {
+    "api.capsolver.com": {"type": "ReCaptchaV3EnterpriseTaskProxyLess"},
+    "api.anti-captcha.com": {
+        "type": "RecaptchaV3TaskProxyless",
+        "minScore": 0.9,
+        "isEnterprise": True,
+    },
+}
 
 Post = Dict[str, Any]
 
@@ -111,6 +123,8 @@ class PostFilter:
 class PassesAPI:
     """A class for interacting with the www.passes.com API."""
 
+    RECAPTCHA_SITEKEY: ClassVar[str] = "6LdZUY4qAAAAAEX-6hC26gsQoQK3VgmCOVLxR7Cz"
+
     def __init__(self) -> None:
         self._session = aiohttp.ClientSession(raise_for_status=True)
         self._username_mapping: Dict[str, str] = {}
@@ -199,13 +213,9 @@ class PassesAPI:
         """
         self._session.headers["Authorization"] = f"Bearer {access_token}"
 
-    async def close(self) -> None:
-        """Close the aiohttp session."""
-        await self._session.close()
-
-    async def login(self, email: str, password: str) -> Tuple[str, bool]:
+    async def _login_with_browser(self, email: str, password: str) -> StaticResponse:
         """
-        Log in with an email address and password.
+        Log in with an email address and password using a browser.
 
         Parameters
         ----------
@@ -216,6 +226,122 @@ class PassesAPI:
 
         Returns
         -------
+        StaticResponse
+            The response from the login request.
+        """
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch()
+            page = await browser.new_page()
+
+            async with page.expect_response(
+                re.compile("https://www.google.com/recaptcha/enterprise/anchor")
+            ) as response_info:
+                await page.goto("https://www.passes.com/login")
+                await page.get_by_test_id("email").fill(email)
+                await page.get_by_test_id("password").fill(password)
+
+            await response_info.value
+
+            async with page.expect_response(
+                "https://www.passes.com/api/auth/password/login"
+            ) as response_info:
+                await page.get_by_role("button", name="Login").click()
+
+            return await StaticResponse.from_response(await response_info.value)
+
+    async def _get_recaptcha_token(
+        self, captcha_solver_config: CaptchaSolverConfig
+    ) -> str:
+        """
+        Get a reCAPTCHA token using a CAPTCHA solving service.
+
+        Parameters
+        ----------
+        captcha_solver_config : CaptchaSolverConfig
+            The configuration for the CAPTCHA solving service.
+
+        Returns
+        -------
+        str
+            The reCAPTCHA token.
+
+        Raises
+        ------
+        CaptchaError
+            If the CAPTCHA solving service returns an error or is unsupported.
+        """
+        if captcha_solver_config.domain not in CAPTCHA_TASK_JSON:
+            raise CaptchaError("Unsupported CAPTCHA solving service.")
+
+        create_task_response = await self._session.post(
+            f"https://{captcha_solver_config.domain}/createTask",
+            json={
+                "clientKey": captcha_solver_config.api_key,
+                "task": {
+                    **CAPTCHA_TASK_JSON[captcha_solver_config.domain],
+                    "websiteURL": "https://www.passes.com/login",
+                    "websiteKey": self.RECAPTCHA_SITEKEY,
+                    "pageAction": "login",
+                },
+            },
+        )
+
+        try:
+            task_json = await create_task_response.json()
+        except JSONDecodeError as err:
+            raise CaptchaError from err
+
+        if task_json["errorId"] != 0:
+            raise CaptchaError(task_json["errorDescription"])
+
+        while True:
+            task_result = await self._session.post(
+                f"https://{captcha_solver_config.domain}/getTaskResult",
+                json={
+                    "clientKey": captcha_solver_config.api_key,
+                    "taskId": task_json["taskId"],
+                },
+            )
+
+            task_result_json = await task_result.json()
+
+            if task_result_json["errorId"] != 0:
+                raise CaptchaError(task_result_json["errorDescription"])
+
+            if task_result_json["status"] == "ready":
+                break
+
+            await asyncio.sleep(1)
+
+        return task_result_json["solution"]["gRecaptchaResponse"]
+
+    async def close(self) -> None:
+        """Close the aiohttp session."""
+        await self._session.close()
+
+    async def login(
+        self,
+        email: str,
+        password: str,
+        *,
+        captcha_solver_config: Optional[CaptchaSolverConfig] = None,
+    ) -> Tuple[str, bool]:
+        """
+        Log in with an email address and password.
+
+        Parameters
+        ----------
+        email : str
+            The email address to log in with.
+        password : str
+            The password to log in with.
+        captcha_solver_config : Optional[CaptchaSolverConfig], optional
+            The configuration for a CAPTCHA solving service, by default None.
+            If provided, the CAPTCHA will be solved using the service,
+            otherwise it will be solved using a browser.
+
+        Returns
+        -------
         Tuple[str, bool]
             A tuple containing the temporary access token and True if multi-factor
             authentication is required, or the refresh token and False if not.
@@ -223,16 +349,27 @@ class PassesAPI:
         Raises
         ------
         AuthorizationError
-            If the login credentials are invalid.
+            If the login credentials are invalid or the reCAPTCHA score is too low.
         """
-        response = await self._session.post(
-            "https://www.passes.com/api/auth/password/login",
-            json={"email": email, "password": password},
-            raise_for_status=False,
-        )
+        if captcha_solver_config:
+            recaptcha_token = await self._get_recaptcha_token(captcha_solver_config)
+
+            response = await self._session.post(
+                "https://www.passes.com/api/auth/password/login",
+                json={
+                    "email": email,
+                    "password": password,
+                    "recaptchaToken": recaptcha_token,
+                },
+                raise_for_status=False,
+            )
+        else:
+            response = await self._login_with_browser(email, password)
 
         if response.status in (400, 401):
-            raise AuthorizationError("Invalid login credentials.")
+            raise AuthorizationError(
+                "Invalid login credentials or low reCAPTCHA score."
+            )
 
         response.raise_for_status()
         response_json = await response.json()

@@ -1,21 +1,14 @@
 """Utility functions and classes for PassesDL."""
 
-from .errors import (
-    AuthorizationError,
-    ChannelNotFoundError,
-    InvalidURLError,
-    UserNotFoundError,
-)
+from .errors import AuthorizationError
 from .passes_api import PassesAPI, PostFilter
-from .utils import Args, ImageSize
+from .utils import Args, CaptchaSolverConfig, ImageSize
 
 __all__ = [
     "Args",
     "AuthorizationError",
-    "ChannelNotFoundError",
+    "CaptchaSolverConfig",
     "ImageSize",
-    "InvalidURLError",
     "PassesAPI",
     "PostFilter",
-    "UserNotFoundError",
 ]
