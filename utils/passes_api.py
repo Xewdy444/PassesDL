@@ -213,7 +213,8 @@ class PassesAPI:
         """
         self._session.headers["Authorization"] = f"Bearer {access_token}"
 
-    async def _login_with_browser(self, email: str, password: str) -> StaticResponse:
+    @staticmethod
+    async def _login_with_browser(email: str, password: str) -> StaticResponse:
         """
         Log in with an email address and password using a browser.
 
