@@ -29,6 +29,15 @@ You will need to provide a refresh token or account credentials in the `config.t
 
 Refresh tokens expire after two weeks, so you'll need to update it periodically.
 
+## CAPTCHA Solving
+Passes uses reCAPTCHA v3 Enterprise to protect against bots on their login page. The default method to solve this CAPTCHA is to use a Playwright browser to automatically solve it. If you don't want to use this method or it doesn't work for you, you can also use a CAPTCHA solving service by providing the API domain and API key in the `config.toml` file.
+
+### Supported Services
+- [CapSolver](https://www.capsolver.com/) (api.capsolver.com)
+- [AntiCaptcha](https://anti-captcha.com/) (api.anti-captcha.com)
+
+2Captcha and CapMonster were also tested and did not work for this website, so support for these services was not added.
+
 ## Usage
 ```
 Usage: main.py [-h] (--feed USERNAME | -m USERNAME | -a USERNAME | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-s {small,medium,large}] [-fd] [-ncf] [-i | -v]
