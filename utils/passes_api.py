@@ -235,7 +235,7 @@ class PassesAPI:
             page = await browser.new_page()
 
             async with page.expect_response(
-                re.compile("https://www.google.com/recaptcha/enterprise/anchor")
+                re.compile(r"https://www\.google\.com/recaptcha/enterprise/anchor")
             ) as response_info:
                 await page.goto("https://www.passes.com/login")
                 await page.get_by_test_id("email").fill(email)
