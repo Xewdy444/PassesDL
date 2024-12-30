@@ -3,6 +3,7 @@ import asyncio
 import logging
 from datetime import datetime
 
+import asyncio_atexit
 import toml
 from rich import traceback
 from rich.logging import RichHandler
@@ -181,6 +182,7 @@ async def main() -> None:
     )
 
     passes = PassesAPI()
+    asyncio_atexit.register(passes.close)
 
     if not refresh_token and all((email, password)):
         logger.info("Obtaining refresh token...")
@@ -207,7 +209,6 @@ async def main() -> None:
 
     if not refresh_token:
         logger.error("A refresh token or login credentials are required")
-        await passes.close()
         return
 
     logger.info("Obtaining access token with refresh token...")
@@ -222,7 +223,6 @@ async def main() -> None:
                 "Please provide login credentials or manually update the refresh token"
             )
 
-            await passes.close()
             return
 
         logger.info("Obtaining a new refresh token with provided credentials...")
@@ -319,7 +319,6 @@ async def main() -> None:
 
     if not media_urls:
         logger.warning("No downloadable media found")
-        await passes.close()
         return
 
     progress = Progress(
@@ -349,8 +348,6 @@ async def main() -> None:
         ]
 
         await asyncio.gather(*tasks)
-
-    await passes.close()
 
 
 if __name__ == "__main__":
