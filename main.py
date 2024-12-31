@@ -170,7 +170,7 @@ async def main() -> None:
     )
 
     captcha_solver_config = CaptchaSolverConfig(
-        domain=config["captcha_solver"]["domain"],
+        api_domain=config["captcha_solver"]["api_domain"],
         api_key=config["captcha_solver"]["api_key"],
     )
 

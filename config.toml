@@ -2,7 +2,7 @@
 refresh_token = ""
 
 [captcha_solver]
-domain = ""
+api_domain = ""
 api_key = ""
 
 [authorization.credentials]

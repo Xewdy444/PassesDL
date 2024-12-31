@@ -271,15 +271,15 @@ class PassesAPI:
         CaptchaError
             If the CAPTCHA solving service returns an error or is unsupported.
         """
-        if captcha_solver_config.domain not in CAPTCHA_TASK_JSON:
+        if captcha_solver_config.api_domain not in CAPTCHA_TASK_JSON:
             raise CaptchaError("Unsupported CAPTCHA solving service.")
 
         create_task_response = await self._session.post(
-            f"https://{captcha_solver_config.domain}/createTask",
+            f"https://{captcha_solver_config.api_domain}/createTask",
             json={
                 "clientKey": captcha_solver_config.api_key,
                 "task": {
-                    **CAPTCHA_TASK_JSON[captcha_solver_config.domain],
+                    **CAPTCHA_TASK_JSON[captcha_solver_config.api_domain],
                     "websiteURL": "https://www.passes.com/login",
                     "websiteKey": self.RECAPTCHA_SITEKEY,
                     "pageAction": "login",
@@ -297,7 +297,7 @@ class PassesAPI:
 
         while True:
             task_result = await self._session.post(
-                f"https://{captcha_solver_config.domain}/getTaskResult",
+                f"https://{captcha_solver_config.api_domain}/getTaskResult",
                 json={
                     "clientKey": captcha_solver_config.api_key,
                     "taskId": task_json["taskId"],

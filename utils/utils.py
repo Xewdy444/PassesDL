@@ -121,8 +121,8 @@ class StaticResponse(BaseModel):
 class CaptchaSolverConfig(BaseModel):
     """A class for representing the configuration for a CAPTCHA solving service."""
 
-    domain: str
+    api_domain: str
     api_key: str
 
     def __bool__(self) -> bool:
-        return bool(self.domain and self.api_key)
+        return bool(self.api_domain and self.api_key)
