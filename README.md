@@ -3,7 +3,7 @@ A tool for downloading media from www.passes.com. You can download images and vi
 
 ## Installation
     $ pip install -r requirements.txt
-    $ python -m patchright install chromium
+    $ python -m patchright install chromium --with-deps
 
 To download videos, you'll need to install FFmpeg.
 
