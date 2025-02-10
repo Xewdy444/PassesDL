@@ -7,6 +7,6 @@ patchright==1.49.1
 pydantic==2.10.6
 python_ffmpeg==2.0.12
 rich==13.9.4
-rich_argparse==1.6.0
+rich_argparse==1.7.0
 tenacity==9.0.0
 toml==0.10.2
