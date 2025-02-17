@@ -720,7 +720,7 @@ class PassesAPI:
 
         while True:
             response = await self._session.post(
-                "https://www.passes.com/api/messages/messages", json=json_data
+                "https://www.passes.com/api/messages/messages-v2", json=json_data
             )
 
             response_json = await response.json()
@@ -734,12 +734,12 @@ class PassesAPI:
                 if limit is not None and limit == len(posts):
                     return posts
 
-            if not response_json["hasMore"]:
+            if not response_json["hasNextPage"]:
                 break
 
             json_data.update(
                 {
-                    "sentAt": response_json["sentAt"],
+                    "lastSentAt": response_json["lastSentAt"],
                     "lastId": response_json["lastId"],
                 }
             )
