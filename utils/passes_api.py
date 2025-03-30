@@ -238,8 +238,11 @@ class PassesAPI:
                 re.compile(r"https://www\.google\.com/recaptcha/enterprise/anchor")
             ) as response_info:
                 await page.goto("https://www.passes.com/login")
-                await page.get_by_test_id("email").fill(email)
-                await page.get_by_test_id("password").fill(password)
+                enter_email = page.get_by_role("textbox", name="Enter your email")
+                enter_password = page.get_by_role("textbox", name="Enter your password")
+
+                await enter_email.fill(email)
+                await enter_password.fill(password)
 
             await response_info.value
 
