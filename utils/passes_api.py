@@ -249,7 +249,7 @@ class PassesAPI:
             async with page.expect_response(
                 "https://www.passes.com/api/auth/password/login"
             ) as response_info:
-                await page.get_by_role("button", name="Login").click()
+                await page.get_by_role("button", name="Sign in").click()
 
             return await StaticResponse.from_response(await response_info.value)
 
@@ -723,7 +723,7 @@ class PassesAPI:
 
         while True:
             response = await self._session.post(
-                "https://www.passes.com/api/messages/messages-v2", json=json_data
+                "https://www.passes.com/api/messages/messages", json=json_data
             )
 
             response_json = await response.json()
@@ -787,7 +787,7 @@ class PassesAPI:
             If the media URL is invalid.
         """
         url_match = re.match(
-            r"https://cdn\.passes\.com/(fan-)?media/"
+            r"https://cdnpasses\.com/(fan-)?media/"
             r"(([a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12})/){1,2}"
             r"([a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12})"
             r"(-[a-z]{2})?(\.[a-z0-9]+)",
