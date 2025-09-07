@@ -332,6 +332,7 @@ class PassesAPI:
         password: str,
         *,
         captcha_solver_config: Optional[CaptchaSolverConfig] = None,
+        attempts: int = 3,
     ) -> Tuple[str, bool]:
         """
         Log in with an email address and password.
@@ -346,6 +347,8 @@ class PassesAPI:
             The configuration for a CAPTCHA solving service, by default None.
             If provided, the CAPTCHA will be solved using the service,
             otherwise it will be solved using a browser.
+        attempts : int, optional
+            The number of attempts for logging in, by default 3.
 
         Returns
         -------
@@ -358,20 +361,26 @@ class PassesAPI:
         AuthorizationError
             If the login credentials are invalid or the reCAPTCHA score is too low.
         """
-        if captcha_solver_config:
-            recaptcha_token = await self._get_recaptcha_token(captcha_solver_config)
+        for _ in range(attempts):
+            if captcha_solver_config:
+                recaptcha_token = await self._get_recaptcha_token(captcha_solver_config)
 
-            response = await self._session.post(
-                "https://www.passes.com/api/auth/password/login",
-                json={
-                    "email": email,
-                    "password": password,
-                    "recaptchaToken": recaptcha_token,
-                },
-                raise_for_status=False,
-            )
-        else:
-            response = await self._login_with_browser(email, password)
+                response = await self._session.post(
+                    "https://www.passes.com/api/auth/password/login",
+                    json={
+                        "email": email,
+                        "password": password,
+                        "recaptchaToken": recaptcha_token,
+                    },
+                    raise_for_status=False,
+                )
+            else:
+                response = await self._login_with_browser(email, password)
+
+            if response.status not in (400, 401):
+                break
+
+            logger.warning("Login attempt failed, retrying...")
 
         if response.status in (400, 401):
             raise AuthorizationError(
