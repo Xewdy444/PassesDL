@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from http.client import responses
 from pathlib import Path
-from typing import Annotated, Dict, List, Optional
+from typing import Annotated, Dict, List, Optional, Union
 
 import annotated_types
 from patchright.async_api import Response
@@ -31,6 +31,7 @@ class ImageSize(Enum):
 class Args(BaseModel):
     """A class for representing the arguments passed to the program."""
 
+    gallery: Union[bool, str]
     feed: Optional[str]
     messages: Optional[str]
     all: Optional[str]

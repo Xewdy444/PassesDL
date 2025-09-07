@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import logging
 from datetime import datetime
+from typing import Union
 
 import asyncio_atexit
 import toml
@@ -38,6 +39,17 @@ async def main() -> None:
     )
 
     download_mode_group = parser.add_mutually_exclusive_group(required=True)
+
+    download_mode_group.add_argument(
+        "-g",
+        "--gallery",
+        nargs="?",
+        const=True,
+        default=False,
+        type=str,
+        help="Download media from your gallery",
+        metavar="USERNAME",
+    )
 
     download_mode_group.add_argument(
         "--feed",
@@ -260,7 +272,16 @@ async def main() -> None:
         to_timestamp=args.to_timestamp,
     )
 
-    if args.feed is not None:
+    if args.gallery is True:
+        logger.info("Fetching posts from your gallery...")
+        posts = await passes.get_gallery(limit=args.limit, post_filter=post_filter)
+    elif isinstance(args.gallery, str):
+        logger.info("Fetching posts from user in your gallery...")
+
+        posts = await passes.get_gallery(
+            username=args.gallery, limit=args.limit, post_filter=post_filter
+        )
+    elif args.feed is not None:
         logger.info("Fetching posts from user's feed...")
 
         posts = await passes.get_feed(

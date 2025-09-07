@@ -98,16 +98,18 @@ class PostFilter:
         bool
             Whether the post meets the filter criteria.
         """
+        contents = post.get("contents", [post])
+
         if any((self.images, self.videos)) and not (
             self.images
-            and any(content["contentType"] == "image" for content in post["contents"])
+            and any(content["contentType"] == "image" for content in contents)
             or self.videos
-            and any(content["contentType"] == "video" for content in post["contents"])
+            and any(content["contentType"] == "video" for content in contents)
         ):
             return False
 
         if self.accessible_only and not any(
-            "signedContent" in content for content in post["contents"]
+            "signedContent" in content for content in contents
         ):
             return False
 
@@ -177,8 +179,9 @@ class PassesAPI:
             The list of media URLs from the post.
         """
         media_urls: List[str] = []
+        contents = post.get("contents", [post])
 
-        for content in post["contents"]:
+        for content in contents:
             if (
                 not images
                 and content["contentType"] == "image"
@@ -618,6 +621,71 @@ class PassesAPI:
         )
 
         return await response.json()
+
+    async def get_gallery(
+        self,
+        *,
+        username: Optional[str] = None,
+        limit: Optional[int] = None,
+        post_filter: Callable[[Post], bool] = PostFilter(),
+    ) -> List[Post]:
+        """
+        Get the gallery of purchased posts.
+
+        Parameters
+        ----------
+        username : Optional[str], optional
+            The username of the user to get posts from in your gallery,
+            by default None. If None, posts from all users will be retrieved.
+        limit : int, optional
+            The maximum number of posts to get, by default None.
+        post_filter : Callable[[Post], bool], optional
+            A function to filter posts, by default PostFilter().
+
+        Returns
+        -------
+        List[Post]
+            The list of posts in the gallery.
+        """
+        user_id = await self.get_user_id(username) if username is not None else None
+
+        if username is not None and user_id is None:
+            raise UserNotFoundError(username)
+
+        json_data = {"search": "", "order": "desc"}
+        posts: List[Post] = []
+
+        while True:
+            response = await self._session.post(
+                "https://www.passes.com/api/content/purchased/content", json=json_data
+            )
+
+            response_json = await response.json()
+
+            for post in response_json["data"]:
+                if (
+                    not post_filter(post)
+                    or user_id is not None
+                    and post["userId"] != user_id
+                ):
+                    continue
+
+                posts.append(post)
+
+                if limit is not None and limit == len(posts):
+                    return posts
+
+            if not response_json["hasMore"]:
+                break
+
+            json_data.update(
+                {
+                    "createdAt": response_json["createdAt"],
+                    "lastId": response_json["lastId"],
+                }
+            )
+
+        return posts
 
     async def get_feed(
         self,

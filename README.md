@@ -98,3 +98,11 @@ https://www.passes.com/texasonefund/71d233df-0091-4149-8cdf-2f3b6789c07f
 Download images from posts in a user's feed from a specific time range:
     
     $ python main.py --feed texasonefund --images --from 2024-07-01T00:00:00 --to 2024-08-31T23:59:59
+
+Download all media from your gallery:
+
+    $ python main.py --gallery
+
+Download media from a specific user in your gallery:
+
+    $ python main.py --gallery thebigpodwithshaq
