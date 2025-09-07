@@ -655,6 +655,11 @@ class PassesAPI:
         -------
         List[Post]
             The list of posts in the gallery.
+
+        Raises
+        ------
+        UserNotFoundError
+            If the user is not found.
         """
         user_id = await self.get_user_id(username) if username is not None else None
 
