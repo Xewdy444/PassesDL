@@ -40,12 +40,14 @@ Passes uses reCAPTCHA v3 Enterprise to protect against bots on their login page.
 
 ## Usage
 ```
-Usage: main.py [-h] (--feed USERNAME | -m USERNAME | -a USERNAME | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-s {small,medium,large}] [-fd] [-ncf] [-i | -v]
+Usage: main.py [-h] (-g [USERNAME] | --feed USERNAME | -m USERNAME | -a USERNAME | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-s {small,medium,large}] [-fd] [-ncf] [-i | -v]
 
 A tool for downloading media from www.passes.com
 
 Options:
   -h, --help            show this help message and exit
+  -g, --gallery [USERNAME]
+                        Download media from your gallery
   --feed USERNAME       Download media from posts in a user's feed
   -m, --messages USERNAME
                         Download media from posts in a user's messages
