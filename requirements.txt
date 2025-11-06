@@ -4,7 +4,7 @@ annotated_types==0.7.0
 async_lru==2.0.5
 asyncio_atexit==1.0.1
 patchright==1.55.2
-pydantic==2.12.3
+pydantic==2.12.4
 python_ffmpeg==2.0.12
 rich==14.2.0
 rich_argparse==1.7.2
