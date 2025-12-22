@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import logging
 from datetime import datetime
-from typing import Union
 
 import asyncio_atexit
 import toml

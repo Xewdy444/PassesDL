@@ -895,7 +895,14 @@ class PassesAPI:
 
                 return media_path
 
-            ffmpeg = FFmpeg().option("y").input(media_url).output(media_path)
+            ffmpeg = (
+                FFmpeg()
+                .option("y")
+                .option("probesize", "10M")
+                .option("analyzeduration", "10M")
+                .input(media_url)
+                .output(media_path)
+            )
 
             async with self._ffmpeg_semaphore:
                 await ffmpeg.execute()
