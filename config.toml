@@ -8,3 +8,6 @@ api_key = ""
 [authorization.credentials]
 email = ""
 password = ""
+
+[widevine]
+device_path = ""

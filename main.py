@@ -22,9 +22,10 @@ from utils import (
     Args,
     AuthorizationError,
     CaptchaSolverConfig,
-    ImageSize,
-    PassesAPI,
+    ImageType,
+    PassesClient,
     PostFilter,
+    VideoType,
 )
 
 logger = logging.getLogger(__name__)
@@ -128,12 +129,21 @@ async def main() -> None:
     )
 
     parser.add_argument(
-        "-s",
-        "--size",
-        default=ImageSize.LARGE,
-        type=lambda size: ImageSize[size.upper()],
-        help="The size of the images to download",
-        choices=list(ImageSize),
+        "-it",
+        "--image-type",
+        default=ImageType.ORIGINAL,
+        type=lambda size: ImageType[size.upper()],
+        help="The type of the images to download",
+        choices=list(ImageType),
+    )
+
+    parser.add_argument(
+        "-vt",
+        "--video-type",
+        default=VideoType.ORIGINAL,
+        type=lambda size: VideoType[size.upper()],
+        help="The type of the videos to download",
+        choices=list(VideoType),
     )
 
     parser.add_argument(
@@ -174,10 +184,11 @@ async def main() -> None:
     args = Args.from_namespace(parser.parse_args())
     config = toml.load("config.toml")
 
-    refresh_token, email, password = (
+    refresh_token, email, password, widevine_device_path = (
         config["authorization"]["refresh_token"],
         config["authorization"]["credentials"]["email"],
         config["authorization"]["credentials"]["password"],
+        config["widevine"]["device_path"],
     )
 
     captcha_solver_config = CaptchaSolverConfig(
@@ -192,7 +203,7 @@ async def main() -> None:
         handlers=[RichHandler(show_path=False)],
     )
 
-    passes = PassesAPI()
+    passes = PassesClient(widevine_device_path=widevine_device_path)
     asyncio_atexit.register(passes.close)
 
     if not refresh_token and all((email, password)):
@@ -326,18 +337,19 @@ async def main() -> None:
 
         posts = await asyncio.gather(*tasks)
 
-    media_urls = [
-        url
+    post_media = [
+        media
         for post in posts
-        for url in passes.get_media_urls(
+        for media in passes.get_media(
             post,
             images=not args.only_videos,
             videos=not args.only_images,
-            image_size=args.size,
+            image_type=args.image_type,
+            video_type=args.video_type,
         )
     ]
 
-    if not media_urls:
+    if not post_media:
         logger.warning("No downloadable media found")
         return
 
@@ -351,20 +363,20 @@ async def main() -> None:
 
     with progress:
         progress_task = progress.add_task(
-            "Downloading media[logging.keyword]...", total=len(media_urls)
+            "Downloading media[logging.keyword]...", total=len(post_media)
         )
 
         tasks = [
             asyncio.create_task(
                 passes.download_media(
-                    url,
+                    media,
                     args.output,
                     force_download=args.force_download,
                     creator_folder=not args.no_creator_folders,
                     done_callback=lambda: progress.update(progress_task, advance=1),
                 )
             )
-            for url in media_urls
+            for media in post_media
         ]
 
         await asyncio.gather(*tasks)

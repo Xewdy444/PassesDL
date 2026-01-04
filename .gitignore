@@ -1,5 +1,6 @@
 # Project specific
 media/
+configs/
 
 # Ruff
 .ruff_cache/
