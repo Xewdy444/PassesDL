@@ -140,9 +140,9 @@ async def main() -> None:
     parser.add_argument(
         "-vt",
         "--video-type",
-        default=VideoType.ORIGINAL,
+        default=VideoType.LARGE,
         type=lambda size: VideoType[size.upper()],
-        help="The type of the videos to download, by default original",
+        help="The type of the videos to download, by default large",
         choices=list(VideoType),
     )
 
