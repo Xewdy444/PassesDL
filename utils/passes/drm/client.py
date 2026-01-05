@@ -12,8 +12,7 @@ from typing import Optional
 import aiohttp
 import xmltodict
 from async_lru import alru_cache
-from m3u8 import Key
-from pywidevine import PSSH, Cdm, Device
+from pywidevine import PSSH, Cdm, Device, Key
 from pywidevine.utils import get_binary_path
 
 from .constants import (
