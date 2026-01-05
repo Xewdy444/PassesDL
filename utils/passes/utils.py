@@ -189,11 +189,15 @@ class StaticResponse(BaseModel):
         return json.loads(self.body)
 
 
-class CaptchaSolverConfig(BaseModel):
+class BoolMixin:
+    """A mixin class that adds a boolean conversion method."""
+
+    def __bool__(self) -> bool:
+        return all(bool(value) for value in self.__dict__.values())
+
+
+class CaptchaSolverConfig(BaseModel, BoolMixin):
     """A class for representing the configuration for a CAPTCHA solving service."""
 
     api_domain: str
     api_key: str
-
-    def __bool__(self) -> bool:
-        return bool(self.api_domain and self.api_key)

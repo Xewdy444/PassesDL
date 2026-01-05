@@ -21,7 +21,7 @@ from rich_argparse import RichHelpFormatter
 from utils import (
     Args,
     AuthorizationError,
-    CaptchaSolverConfig,
+    Config,
     ImageType,
     PassesClient,
     PostFilter,
@@ -41,13 +41,11 @@ async def main() -> None:
     download_mode_group = parser.add_mutually_exclusive_group(required=True)
 
     download_mode_group.add_argument(
-        "-g",
-        "--gallery",
-        nargs="?",
-        const=True,
-        default=False,
+        "-a",
+        "--all",
+        default=None,
         type=str,
-        help="Download media from your gallery",
+        help="Download media from posts in a user's feed and messages",
         metavar="USERNAME",
     )
 
@@ -69,11 +67,13 @@ async def main() -> None:
     )
 
     download_mode_group.add_argument(
-        "-a",
-        "--all",
-        default=None,
+        "-g",
+        "--gallery",
+        nargs="?",
+        const=True,
+        default=False,
         type=str,
-        help="Download media from posts in a user's feed and messages",
+        help="Download media from your gallery",
         metavar="USERNAME",
     )
 
@@ -133,7 +133,7 @@ async def main() -> None:
         "--image-type",
         default=ImageType.ORIGINAL,
         type=lambda size: ImageType[size.upper()],
-        help="The type of the images to download",
+        help="The type of the images to download, by default original",
         choices=list(ImageType),
     )
 
@@ -142,7 +142,7 @@ async def main() -> None:
         "--video-type",
         default=VideoType.ORIGINAL,
         type=lambda size: VideoType[size.upper()],
-        help="The type of the videos to download",
+        help="The type of the videos to download, by default original",
         choices=list(VideoType),
     )
 
@@ -182,19 +182,7 @@ async def main() -> None:
     )
 
     args = Args.from_namespace(parser.parse_args())
-    config = toml.load("config.toml")
-
-    refresh_token, email, password, widevine_device_path = (
-        config["authorization"]["refresh_token"],
-        config["authorization"]["credentials"]["email"],
-        config["authorization"]["credentials"]["password"],
-        config["widevine"]["device_path"],
-    )
-
-    captcha_solver_config = CaptchaSolverConfig(
-        api_domain=config["captcha_solver"]["api_domain"],
-        api_key=config["captcha_solver"]["api_key"],
-    )
+    config = Config()
 
     logging.basicConfig(
         format="%(message)s",
@@ -203,14 +191,19 @@ async def main() -> None:
         handlers=[RichHandler(show_path=False)],
     )
 
-    passes = PassesClient(widevine_device_path=widevine_device_path)
+    passes = PassesClient(
+        widevine_device_path=config.widevine.device_path if config.widevine else None
+    )
+
     asyncio_atexit.register(passes.close)
 
-    if not refresh_token and all((email, password)):
+    if not config.authorization.refresh_token and config.authorization.credentials:
         logger.info("Obtaining refresh token...")
 
-        refresh_token, mfa_required = await passes.login(
-            email, password, captcha_solver_config=captcha_solver_config
+        config.authorization.refresh_token, mfa_required = await passes.login(
+            config.authorization.credentials.email,
+            config.authorization.credentials.password,
+            captcha_solver_config=config.captcha_solver,
         )
 
         if mfa_required:
@@ -220,27 +213,27 @@ async def main() -> None:
                 "[blue]>>>[/blue] Enter the multi-factor authentication code"
             )
 
-            refresh_token = await passes.submit_mfa_token(refresh_token, mfa_token)
-
-        config["authorization"]["refresh_token"] = refresh_token
+            config.authorization.refresh_token = await passes.submit_mfa_token(
+                config.authorization.refresh_token, mfa_token
+            )
 
         with open("config.toml", "w", encoding="utf-8") as file:
-            toml.dump(config, file)
+            toml.dump(config.model_dump(), file)
 
         logger.info("Refresh token saved to config.toml")
 
-    if not refresh_token:
+    if not config.authorization.refresh_token:
         logger.error("A refresh token or login credentials are required")
         return
 
     logger.info("Obtaining access token with refresh token...")
 
     try:
-        access_token = await passes.get_access_token(refresh_token)
+        access_token = await passes.get_access_token(config.authorization.refresh_token)
     except AuthorizationError:
         logger.warning("Refresh token is invalid or expired")
 
-        if not all((email, password)):
+        if not config.authorization.credentials:
             logger.error(
                 "Please provide login credentials or manually update the refresh token"
             )
@@ -249,8 +242,10 @@ async def main() -> None:
 
         logger.info("Obtaining a new refresh token with provided credentials...")
 
-        refresh_token, mfa_required = await passes.login(
-            email, password, captcha_solver_config=captcha_solver_config
+        config.authorization.refresh_token, mfa_required = await passes.login(
+            config.authorization.credentials.email,
+            config.authorization.credentials.password,
+            captcha_solver_config=config.captcha_solver,
         )
 
         if mfa_required:
@@ -260,16 +255,16 @@ async def main() -> None:
                 "[blue]>>>[/blue] Enter the multi-factor authentication code"
             )
 
-            refresh_token = await passes.submit_mfa_token(refresh_token, mfa_token)
-
-        config["authorization"]["refresh_token"] = refresh_token
+            config.authorization.refresh_token = await passes.submit_mfa_token(
+                config.authorization.refresh_token, mfa_token
+            )
 
         with open("config.toml", "w", encoding="utf-8") as file:
-            toml.dump(config, file)
+            toml.dump(config.model_dump(), file)
 
         logger.info("Refresh token saved to config.toml")
         logger.info("Obtaining access token with new refresh token...")
-        access_token = await passes.get_access_token(refresh_token)
+        access_token = await passes.get_access_token(config.authorization.refresh_token)
 
     passes.set_access_token(access_token)
     logger.info("Set access token")
@@ -282,28 +277,7 @@ async def main() -> None:
         to_timestamp=args.to_timestamp,
     )
 
-    if args.gallery is True:
-        logger.info("Fetching posts from your gallery...")
-        posts = await passes.get_gallery(limit=args.limit, post_filter=post_filter)
-    elif isinstance(args.gallery, str):
-        logger.info("Fetching posts from user in your gallery...")
-
-        posts = await passes.get_gallery(
-            username=args.gallery, limit=args.limit, post_filter=post_filter
-        )
-    elif args.feed is not None:
-        logger.info("Fetching posts from user's feed...")
-
-        posts = await passes.get_feed(
-            args.feed, limit=args.limit, post_filter=post_filter
-        )
-    elif args.messages is not None:
-        logger.info("Fetching posts from user's messages...")
-
-        posts = await passes.get_messages(
-            args.messages, limit=args.limit, post_filter=post_filter
-        )
-    elif args.all is not None:
+    if args.all is not None:
         logger.info("Fetching posts from user's feed and messages...")
 
         feed_task = asyncio.create_task(
@@ -319,6 +293,27 @@ async def main() -> None:
         posts = [
             item for result in results if isinstance(result, list) for item in result
         ]
+    elif args.feed is not None:
+        logger.info("Fetching posts from user's feed...")
+
+        posts = await passes.get_feed(
+            args.feed, limit=args.limit, post_filter=post_filter
+        )
+    elif args.messages is not None:
+        logger.info("Fetching posts from user's messages...")
+
+        posts = await passes.get_messages(
+            args.messages, limit=args.limit, post_filter=post_filter
+        )
+    elif args.gallery is True:
+        logger.info("Fetching posts from your gallery...")
+        posts = await passes.get_gallery(limit=args.limit, post_filter=post_filter)
+    elif isinstance(args.gallery, str):
+        logger.info("Fetching posts from user in your gallery...")
+
+        posts = await passes.get_gallery(
+            username=args.gallery, limit=args.limit, post_filter=post_filter
+        )
     elif args.file is not None:
         logger.info("Fetching posts from URLs in file...")
 

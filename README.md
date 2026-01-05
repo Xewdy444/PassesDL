@@ -1,8 +1,11 @@
 # PassesDL
-A tool for downloading media from www.passes.com. You can download images and videos from posts in a user's feed or messages with some convenient filtering options. The download process is fast and efficient as the requests and file writes are made asynchronously.
+A tool for downloading media from www.passes.com. This tool allows you to download images and videos from your gallery or posts in a user's feed or messages with some convenient filtering options. The download process is fast and efficient as the requests and file writes are made asynchronously.
 
 ## Installation
     $ pip install -r requirements.txt
+
+If you plan on logging in with credentials with no CAPTCHA solving service:
+    
     $ python -m patchright install chromium --with-deps
 
 ### FFmpeg
@@ -40,24 +43,24 @@ Passes uses reCAPTCHA v3 Enterprise to protect against bots on their login page.
 2Captcha and CapMonster were also tested and did not work for this website, so support for these services was not added.
 
 ## Widevine DRM
-This tool is able to decrypt media protected with Widevine DRM. Encrypted media is not watermarked, so it is the default option. You can still choose to download unencrypted media, which does not require Shaka Packager, by specifying values other than `original` for the `--image-type` and `--video-type` options.
+This tool is able to decrypt media protected with Widevine DRM. Encrypted media does not contain watermarks and is labeled as `original` for the image and video types. You can still choose to download unencrypted media, which does not require Shaka Packager, by specifying values other than `original` for the `--image-type` and `--video-type` options.
 
-You can also provide your own Widevine device (.wvd) by specifying the path in the `device_path` field under the `widevine` section of the `config.toml`. This is optional however as the tool will provide a device if one is not specified.
+You can also provide your own Widevine device (.wvd) by specifying the path to the file in the `device_path` field under the `widevine` section in the `config.toml`. This is optional however as the tool will provide a device if one is not specified.
 
 ## Usage
 ```
-Usage: main.py [-h] (-g [USERNAME] | --feed USERNAME | -m USERNAME | -a USERNAME | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-it {small,medium,large,original}] [-vt {large,original}] [-fd] [-ncf] [-i | -v]
+Usage: main.py [-h] (-a USERNAME | --feed USERNAME | -m USERNAME | -g [USERNAME] | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-it {small,medium,large,original}] [-vt {large,original}] [-fd] [-ncf] [-i | -v]
 
 A tool for downloading media from www.passes.com
 
 Options:
   -h, --help            show this help message and exit
-  -g, --gallery [USERNAME]
-                        Download media from your gallery
+  -a, --all USERNAME    Download media from posts in a user's feed and messages
   --feed USERNAME       Download media from posts in a user's feed
   -m, --messages USERNAME
                         Download media from posts in a user's messages
-  -a, --all USERNAME    Download media from posts in a user's feed and messages
+  -g, --gallery [USERNAME]
+                        Download media from your gallery
   --urls, --links URLS [URLS ...]
                         A list of post URLs to download media from
   --file FILE           A file containing a list of post URLs to download media from
@@ -68,9 +71,9 @@ Options:
                         The creation timestamp of posts to stop downloading media
   --limit LIMIT         The maximum number of posts in the user's feed or messages to download media from
   -it, --image-type {small,medium,large,original}
-                        The type of the images to download
+                        The type of the images to download, by default original
   -vt, --video-type {large,original}
-                        The type of the videos to download
+                        The type of the videos to download, by default original
   -fd, --force-download
                         Force downloading the media even if it already exists in the output directory
   -ncf, --no-creator-folders
