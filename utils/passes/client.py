@@ -130,17 +130,17 @@ class PassesClient:
 
             if content["contentType"] == "video":
                 signed_url = (
-                    signed_content[video_type.value]
-                    if video_type.value in signed_content
-                    else signed_content[VideoType.LARGE.value]
+                    signed_content.get(video_type.value)
+                    or signed_content.get(VideoType.LARGE.value)
+                    or signed_content.get("signedUrl")
                 )
 
                 extension = content.get("extension") or "mp4"
             else:
                 signed_url = (
-                    signed_content[image_type.value]
-                    if image_type.value in signed_content
-                    else signed_content[ImageType.LARGE.value]
+                    signed_content.get(image_type.value)
+                    or signed_content.get(ImageType.LARGE.value)
+                    or signed_content.get("signedUrl")
                 )
 
                 extension = content.get("extension") or re.search(
@@ -324,7 +324,7 @@ class PassesClient:
         for file in media_path.parent.glob(f"{media.content_id}.*.*"):
             file.unlink()
 
-        if media.content_type != "image":
+        if media.content_type == "video":
             return media_path
 
         output_path = media_path.with_suffix(f".{media.extension}")
@@ -889,9 +889,9 @@ class PassesClient:
         base_media_path = Path(output_dir / media.content_id)
 
         media_path = (
-            base_media_path.with_suffix(f".{media.extension}")
-            if media.content_type == "image"
-            else base_media_path.with_suffix(".mp4")
+            base_media_path.with_suffix(".mp4")
+            if media.content_type == "video"
+            else base_media_path.with_suffix(f".{media.extension}")
         )
 
         if media_path.exists() and not force_download:
@@ -914,7 +914,7 @@ class PassesClient:
 
             return media_path
 
-        if media.content_type == "image" and media.is_encrypted:
+        if media.content_type != "video" and media.is_encrypted:
             media_path = media_path.with_suffix(".mp4")
 
         async with self._video_semaphore:
