@@ -1,7 +1,9 @@
 """The client for handling DRM-protected content on www.passes.com."""
 
 import asyncio
+import logging
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -10,11 +12,19 @@ from typing import Optional
 import aiohttp
 import xmltodict
 from async_lru import alru_cache
-from pywidevine import PSSH, Cdm, Device, Key
+from m3u8 import Key
+from pywidevine import PSSH, Cdm, Device
 from pywidevine.utils import get_binary_path
 
-from .constants import BUYDRM_SERVICE_CERTIFICATE, DEFAULT_DEVICE, LICENSE_URL
+from .constants import (
+    BUYDRM_SERVICE_CERTIFICATE,
+    DEFAULT_DEVICE,
+    DEFAULT_KEY,
+    DEFAULT_PSSH,
+)
 from .utils import HashablePSSH, SecurityLevel
+
+logger = logging.getLogger(__name__)
 
 
 class PassesDRM:
@@ -106,12 +116,22 @@ class PassesDRM:
         Optional[Key]
             The decryption key if obtained, otherwise None.
         """
+        if pssh == DEFAULT_PSSH:
+            logger.info(
+                "Using default decryption key: %s:%s",
+                DEFAULT_KEY.kid.hex,
+                DEFAULT_KEY.key.hex(),
+                extra={"highlighter": None},
+            )
+
+            return DEFAULT_KEY
+
         session_id = self._cdm.open()
         self._cdm.set_service_certificate(session_id, BUYDRM_SERVICE_CERTIFICATE)
         challenge = self._cdm.get_license_challenge(session_id, pssh)
 
         response = await self._session.post(
-            LICENSE_URL,
+            "https://www.passes.com/api/content/drm/license-request",
             params={
                 "drm-type": "widevine",
                 "drm-code": SecurityLevel.SW_SECURE_CRYPTO.value,
@@ -128,7 +148,16 @@ class PassesDRM:
         if not decryption_keys:
             return None
 
-        return decryption_keys[0]
+        decryption_key = decryption_keys[0]
+
+        logger.info(
+            "Obtained decryption key: %s:%s",
+            decryption_key.kid.hex,
+            decryption_key.key.hex(),
+            extra={"highlighter": None},
+        )
+
+        return decryption_key
 
     async def decrypt_file(self, encrypted_file: Path, decryption_key: Key) -> None:
         """
@@ -151,6 +180,7 @@ class PassesDRM:
 
             args = [
                 f"input={encrypted_file},stream=0,output={output_file}",
+                f"--temp_dir={temp_dir}",
                 "--enable_raw_key_decryption",
                 "--keys",
                 f"key_id={decryption_key.kid.hex}:key={decryption_key.key.hex()}",
@@ -164,8 +194,8 @@ class PassesDRM:
             process = await asyncio.create_subprocess_exec(
                 shaka_packager_path,
                 *args,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
             await process.wait()

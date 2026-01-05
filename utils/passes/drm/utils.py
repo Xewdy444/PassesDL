@@ -19,7 +19,7 @@ class HashablePSSH(PSSH):
     """A hashable version of the pywidevine PSSH class."""
 
     def __hash__(self) -> int:
-        return hash((self.version, self.flags, self.system_id, self.init_data))
+        return hash((self.version, self.flags, self.system_id, tuple(self.key_ids)))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PSSH):
@@ -29,5 +29,5 @@ class HashablePSSH(PSSH):
             self.version == other.version
             and self.flags == other.flags
             and self.system_id == other.system_id
-            and self.init_data == other.init_data
+            and self.key_ids == other.key_ids
         )
