@@ -137,15 +137,17 @@ class PassesClient:
 
                 extension = content.get("extension") or "mp4"
             else:
-                signed_url = (
-                    signed_content.get(image_type.value)
-                    or signed_content.get(ImageType.LARGE.value)
-                    or signed_content.get("signedUrl")
-                )
+                signed_url = signed_content.get(image_type.value)
+
+                fallback_signed_url = signed_content.get(
+                    ImageType.LARGE.value
+                ) or signed_content.get("signedUrl")
 
                 extension = content.get("extension") or re.search(
-                    r"\.([a-z0-9]+)\?", signed_url
+                    r"\.([a-z0-9]+)\?", fallback_signed_url
                 ).group(1)
+
+                signed_url = signed_url or fallback_signed_url
 
             media.append(
                 Media(
