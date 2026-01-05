@@ -189,7 +189,13 @@ class PassesClient:
         """
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch()
-            page = await browser.new_page()
+
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                f"(KHTML, like Gecko) Chrome/{browser.version} Safari/537.36"
+            )
+
+            page = await context.new_page()
 
             async with page.expect_response(
                 re.compile(r"https://www\.google\.com/recaptcha/enterprise/anchor")
