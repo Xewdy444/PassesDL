@@ -6,9 +6,9 @@ A tool for downloading media from www.passes.com. This tool allows you to downlo
 
     $ pip install -r requirements.txt
 
-If you plan on logging in with credentials without a CAPTCHA solving service:
+If you plan on logging in with credentials without a CAPTCHA solving service (only required if you don't have Google Chrome installed):
 
-    $ python -m patchright install chromium --with-deps
+    $ python -m patchright install chrome --with-deps
 
 ### FFmpeg
 
