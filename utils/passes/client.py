@@ -437,7 +437,7 @@ class PassesClient:
             If the multi-factor authentication token is invalid.
         """
         response = await self._session.post(
-            "https://www.passes.com/api/auth/check-mfa-token",
+            "https://www.passes.com/api/auth/mfa/mfa-token/check",
             headers={"Authorization": f"Bearer {access_token}"},
             json={"token": mfa_token},
             raise_for_status=False,
