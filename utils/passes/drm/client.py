@@ -174,7 +174,7 @@ class PassesDRM:
         FileNotFoundError
             If the Shaka Packager binary is not found.
         """
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory(dir=encrypted_file.parent) as temp_dir:
             output_file = Path(temp_dir) / f"decrypted_{encrypted_file.name}"
 
             args = [

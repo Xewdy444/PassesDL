@@ -902,21 +902,21 @@ class PassesClient:
 
             return media_path
 
-        if media.content_type == "image" and not media.is_encrypted:
-            response: aiohttp.ClientResponse = await self._retry(
-                self._session.get, media.signed_url
-            )
+        if media.content_type != "video":
+            if not media.is_encrypted:
+                response: aiohttp.ClientResponse = await self._retry(
+                    self._session.get, media.signed_url
+                )
 
-            async with aiofiles.open(media_path, "wb") as file:
-                async for data in response.content.iter_any():
-                    await file.write(data)
+                async with aiofiles.open(media_path, "wb") as file:
+                    async for data in response.content.iter_any():
+                        await file.write(data)
 
-            if done_callback is not None:
-                done_callback()
+                if done_callback is not None:
+                    done_callback()
 
-            return media_path
+                return media_path
 
-        if media.content_type != "video" and media.is_encrypted:
             media_path = media_path.with_suffix(".mp4")
 
         async with self._video_semaphore:

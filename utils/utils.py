@@ -16,10 +16,10 @@ from .passes.utils import BoolMixin, CaptchaSolverConfig, ImageType, VideoType
 class Args(BaseModel):
     """A class for representing the arguments passed to the program."""
 
-    gallery: Union[bool, str]
+    all: Optional[str]
     feed: Optional[str]
     messages: Optional[str]
-    all: Optional[str]
+    gallery: Union[bool, str]
     urls: List[HttpUrl]
     file: Optional[FilePath]
     output: Path
