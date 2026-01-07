@@ -58,7 +58,11 @@ class PassesDRM:
         platform = {"win32": "win", "darwin": "osx"}.get(sys.platform, sys.platform)
 
         return get_binary_path(
-            "shaka-packager", f"packager-{platform}", f"packager-{platform}-x64"
+            f"packager-{platform}-x64",
+            f"packager-{platform}-arm64",
+            f"packager-{platform}",
+            "shaka-packager",
+            "packager",
         )
 
     @alru_cache
