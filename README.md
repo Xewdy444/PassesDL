@@ -24,7 +24,7 @@ You can also download the latest static build from [here](https://ffmpeg.org/dow
 
 ### Shaka Packager
 
-To download encrypted media, you'll need to install [Shaka Packager](https://github.com/shaka-project/shaka-packager). Get the [latest release](https://github.com/shaka-project/shaka-packager/releases) for your OS (e.g., `packager-win-x64.exe`) and add it to your system's PATH or the project directory.
+To decrypt encrypted media, you'll need to install [Shaka Packager](https://github.com/shaka-project/shaka-packager). Get the [latest release](https://github.com/shaka-project/shaka-packager/releases) for your OS (e.g., `packager-win-x64.exe`) and add it to a directory listed in your system’s PATH, or place it in the project directory.
 
 ## Authorization
 
@@ -35,6 +35,26 @@ You will need to provide a refresh token or account credentials in the `config.t
 3. Sign in to your account with the third-party service
 4. In the "Network" tab, find the request with the URL `https://www.passes.com/auth/success`
 5. Within the query parameters of the request, you'll find the `refreshToken` parameter. Copy the value of this parameter and paste it into the `refresh_token` field in the configuration file
+
+### Retrieving Refresh Token From Local Storage
+
+You can also find the refresh token stored in your browser's local storage after signing in.
+
+#### Google Chrome
+
+1. Open **Developer Tools**
+2. Go to the **Application** tab
+3. In the left sidebar, under **Storage**, expand **Local Storage**
+4. Click **`https://www.passes.com`**
+5. Look for the key named **`refresh-token`** in the key/value list
+
+#### Mozilla Firefox
+
+1. Open **Developer Tools**
+2. Go to the **Storage** tab
+3. In the left sidebar, expand **Local Storage**
+4. Click **`https://www.passes.com`**
+5. Locate the key named **`refresh-token`** in the key/value list
 
 Refresh tokens expire after two weeks, so you'll need to update it periodically.
 
