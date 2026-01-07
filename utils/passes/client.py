@@ -922,7 +922,6 @@ class PassesClient:
         async with self._video_semaphore:
             options = {
                 "outtmpl": str(media_path),
-                "fixup": "never",
                 "quiet": True,
                 "no_warnings": True,
                 "overwrites": True,
