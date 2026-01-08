@@ -117,7 +117,7 @@ class PassesClient:
         for content in contents:
             if (
                 not images
-                and content["contentType"] == "image"
+                and content["contentType"] in ("image", "gif")
                 or not videos
                 and content["contentType"] == "video"
             ):
@@ -135,7 +135,7 @@ class PassesClient:
                     or signed_content.get("signedUrl")
                 )
 
-                extension = content.get("extension") or "mp4"
+                extension = "mp4"
             else:
                 signed_url = signed_content.get(image_type.value)
 
@@ -143,11 +143,14 @@ class PassesClient:
                     ImageType.LARGE.value
                 ) or signed_content.get("signedUrl")
 
-                extension = content.get("extension") or re.search(
-                    r"\.([a-z0-9]+)\?", fallback_signed_url
-                ).group(1)
-
                 signed_url = signed_url or fallback_signed_url
+                extension_match = re.search(r"\.([a-z0-9]+)\?", fallback_signed_url)
+
+                extension = (
+                    extension_match.group(1)
+                    if extension_match is not None
+                    else content.get("extension", "jpeg")
+                )
 
             media.append(
                 Media(

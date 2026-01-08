@@ -115,7 +115,7 @@ class PostFilter:
 
         if any((self.images, self.videos)) and not (
             self.images
-            and any(content["contentType"] == "image" for content in contents)
+            and any(content["contentType"] in ("image", "gif") for content in contents)
             or self.videos
             and any(content["contentType"] == "video" for content in contents)
         ):
