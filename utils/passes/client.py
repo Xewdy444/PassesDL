@@ -1,136 +1,66 @@
-"""A module for interacting with the www.passes.com API."""
+"""A client for interacting with the www.passes.com API."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
-from datetime import datetime
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Dict, Final, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import aiofiles
 import aiohttp
+import yt_dlp
 from async_lru import alru_cache
 from ffmpeg.asyncio import FFmpeg
 from patchright.async_api import async_playwright
+from pywidevine import Device
 from tenacity import AsyncRetrying, retry_if_exception
 
+from .constants import CAPTCHA_TASK_JSON, RECAPTCHA_SITEKEY
+from .drm import PassesDRM
 from .errors import (
     AuthorizationError,
     CaptchaError,
     ChannelNotFoundError,
     InvalidURLError,
+    MediaDecryptionError,
     UserNotFoundError,
 )
-from .utils import CaptchaSolverConfig, ImageSize, StaticResponse
-
-CAPTCHA_TASK_JSON: Final[Dict[str, Dict[str, Any]]] = {
-    "api.capsolver.com": {"type": "ReCaptchaV3EnterpriseTaskProxyLess"},
-    "api.anti-captcha.com": {
-        "type": "RecaptchaV3TaskProxyless",
-        "minScore": 0.9,
-        "isEnterprise": True,
-    },
-}
-
-Post = Dict[str, Any]
+from .utils import (
+    CaptchaSolverConfig,
+    ImageType,
+    Media,
+    Post,
+    PostFilter,
+    StaticResponse,
+    VideoType,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class PostFilter:
+class PassesClient:
     """
-    A class for filtering Passes posts.
+    A class for interacting with the www.passes.com API.
 
     Parameters
     ----------
-    post : Post
-        The post to filter.
-    images : bool, optional
-        Whether to filter posts with images, by default False.
-    videos : bool, optional
-        Whether to filter posts with videos, by default False.
-    accessible_only : bool, optional
-        Whether to filter posts with accessible media only, by default False.
-    from_timestamp : datetime, optional
-        The minimum timestamp for posts to filter, by default datetime.min.
-    to_timestamp : datetime, optional
-        The maximum timestamp for posts to filter, by default datetime.max.
+    widevine_device_path : Union[Path, str, None], optional
+        The path to a Widevine device file (.wvd),
+        by default None. If None, a default device will be used.
     """
 
-    def __init__(
-        self,
-        *,
-        images: bool = False,
-        videos: bool = False,
-        accessible_only: bool = False,
-        from_timestamp: datetime = datetime.min,
-        to_timestamp: datetime = datetime.max,
-    ) -> None:
-        self.images = images
-        self.videos = videos
-        self.accessible_only = accessible_only
-        self.from_timestamp = from_timestamp
-        self.to_timestamp = to_timestamp
-
-    def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}(images={self.images!r}, "
-            f"videos={self.videos!r}, "
-            f"accessible_only={self.accessible_only!r}, "
-            f"from_timestamp={self.from_timestamp!r}, "
-            f"to_timestamp={self.to_timestamp!r})"
-        )
-
-    def __call__(self, post: Post) -> bool:
-        """
-        Determine whether a post meets the filter criteria.
-
-        Parameters
-        ----------
-        post : Post
-            The post to filter.
-
-        Returns
-        -------
-        bool
-            Whether the post meets the filter criteria.
-        """
-        contents = post.get("contents", [post])
-
-        if any((self.images, self.videos)) and not (
-            self.images
-            and any(content["contentType"] == "image" for content in contents)
-            or self.videos
-            and any(content["contentType"] == "video" for content in contents)
-        ):
-            return False
-
-        if self.accessible_only and not any(
-            "signedContent" in content for content in contents
-        ):
-            return False
-
-        post_timestamp_string = post.get("createdAt") or post.get("sentAt")
-        post_timestamp = datetime.fromisoformat(post_timestamp_string.rstrip("Z"))
-
-        if not self.from_timestamp <= post_timestamp <= self.to_timestamp:
-            return False
-
-        return True
-
-
-class PassesAPI:
-    """A class for interacting with the www.passes.com API."""
-
-    RECAPTCHA_SITEKEY: ClassVar[str] = "6LdZUY4qAAAAAEX-6hC26gsQoQK3VgmCOVLxR7Cz"
-
-    def __init__(self) -> None:
+    def __init__(self, widevine_device_path: Union[Path, str, None] = None) -> None:
         self._session = aiohttp.ClientSession(raise_for_status=True)
         self._username_mapping: Dict[str, str] = {}
-        self._ffmpeg_semaphore = asyncio.Semaphore()
+        self._video_semaphore = asyncio.Semaphore()
+
+        self._drm = PassesDRM(
+            self._session,
+            device=Device.load(widevine_device_path) if widevine_device_path else None,
+        )
 
         self._retry = AsyncRetrying(
             retry=retry_if_exception(
@@ -139,7 +69,7 @@ class PassesAPI:
             )
         )
 
-    async def __aenter__(self) -> PassesAPI:
+    async def __aenter__(self) -> PassesClient:
         return self
 
     async def __aexit__(self, *_: Any) -> None:
@@ -152,39 +82,42 @@ class PassesAPI:
         }
 
     @staticmethod
-    def get_media_urls(
+    def get_media(
         post: Post,
         *,
         images: bool = True,
         videos: bool = True,
-        image_size: ImageSize = ImageSize.LARGE,
-    ) -> List[str]:
+        image_type: ImageType = ImageType.ORIGINAL,
+        video_type: VideoType = VideoType.ORIGINAL,
+    ) -> List[Media]:
         """
-        Get the media URLs from a post.
+        Get the media from a post.
 
         Parameters
         ----------
         post : Post
-            The post to get the media URLs from.
+            The post to get the media from.
         images : bool, optional
-            Whether to get image URLs, by default True.
+            Whether to get images, by default True.
         videos : bool, optional
-            Whether to get video URLs, by default True.
-        image_size : ImageSize, optional
-            The image size to get URLs for, by default ImageSize.LARGE.
+            Whether to get videos, by default True.
+        image_type : ImageType, optional
+            The type of the images to get, by default ImageType.ORIGINAL.
+        video_type : VideoType, optional
+            The type of the videos to get, by default VideoType.ORIGINAL.
 
         Returns
         -------
-        List[str]
-            The list of media URLs from the post.
+        List[Media]
+            The list of media from the post.
         """
-        media_urls: List[str] = []
+        media: List[Media] = []
         contents = post.get("contents", [post])
 
         for content in contents:
             if (
                 not images
-                and content["contentType"] == "image"
+                and content["contentType"] in ("image", "gif")
                 or not videos
                 and content["contentType"] == "video"
             ):
@@ -195,15 +128,41 @@ class PassesAPI:
             if signed_content is None:
                 continue
 
-            url = (
-                signed_content[image_size.value]
-                if image_size.value in signed_content
-                else signed_content["signedUrl"]
+            if content["contentType"] == "video":
+                signed_url = (
+                    signed_content.get(video_type.value)
+                    or signed_content.get(VideoType.LARGE.value)
+                    or signed_content.get("signedUrl")
+                )
+
+                extension = "mp4"
+            else:
+                signed_url = signed_content.get(image_type.value)
+
+                fallback_signed_url = signed_content.get(
+                    ImageType.LARGE.value
+                ) or signed_content.get("signedUrl")
+
+                signed_url = signed_url or fallback_signed_url
+                extension_match = re.search(r"\.([a-z0-9]+)\?", fallback_signed_url)
+
+                extension = (
+                    extension_match.group(1)
+                    if extension_match is not None
+                    else content.get("extension", "jpeg")
+                )
+
+            media.append(
+                Media(
+                    user_id=content["userId"],
+                    signed_url=signed_url,
+                    content_id=content["contentId"],
+                    content_type=content["contentType"],
+                    extension=extension,
+                )
             )
 
-            media_urls.append(url)
-
-        return media_urls
+        return media
 
     def set_access_token(self, access_token: str) -> None:
         """
@@ -234,8 +193,14 @@ class PassesAPI:
             The response from the login request.
         """
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch()
-            page = await browser.new_page()
+            browser = await playwright.chromium.launch(channel="chrome")
+
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                f"(KHTML, like Gecko) Chrome/{browser.version} Safari/537.36"
+            )
+
+            page = await context.new_page()
 
             async with page.expect_response(
                 re.compile(r"https://www\.google\.com/recaptcha/enterprise/anchor")
@@ -287,7 +252,7 @@ class PassesAPI:
                 "task": {
                     **CAPTCHA_TASK_JSON[captcha_solver_config.api_domain],
                     "websiteURL": "https://www.passes.com/login",
-                    "websiteKey": self.RECAPTCHA_SITEKEY,
+                    "websiteKey": RECAPTCHA_SITEKEY,
                     "pageAction": "login",
                 },
             },
@@ -321,6 +286,64 @@ class PassesAPI:
             await asyncio.sleep(1)
 
         return task_result_json["solution"]["gRecaptchaResponse"]
+
+    async def _decrypt_and_merge_media(self, media: Media, media_path: Path) -> Path:
+        """
+        Decrypt and merge encrypted media files.
+
+        Parameters
+        ----------
+        media : Media
+            The media to decrypt and merge.
+        media_path : Path
+            The path to the media file.
+
+        Returns
+        -------
+        Path
+            The path to the decrypted and merged media file.
+
+        Raises
+        ------
+        MediaDecryptionError
+            If the media could not be decrypted.
+        """
+        ffmpeg_command = FFmpeg().option("y").output(media_path)
+
+        for file in media_path.parent.glob(f"{media.content_id}.*.*"):
+            pssh = await self._drm.get_widevine_pssh(media.signed_url)
+
+            if pssh is None:
+                raise MediaDecryptionError("Widevine PSSH not found in manifest.")
+
+            decryption_key = await self._drm.get_decryption_key(pssh)
+
+            if decryption_key is None:
+                raise MediaDecryptionError("Decryption key could not be obtained.")
+
+            await self._drm.decrypt_file(file, decryption_key)
+            ffmpeg_command = ffmpeg_command.input(file)
+
+        await ffmpeg_command.execute()
+
+        for file in media_path.parent.glob(f"{media.content_id}.*.*"):
+            file.unlink()
+
+        if media.content_type == "video":
+            return media_path
+
+        output_path = media_path.with_suffix(f".{media.extension}")
+
+        ffmpeg_image_command = (
+            FFmpeg()
+            .option("y")
+            .input(media_path)
+            .output(output_path, options={"vframes": "1"})
+        )
+
+        await ffmpeg_image_command.execute()
+        media_path.unlink()
+        return output_path
 
     async def close(self) -> None:
         """Close the aiohttp session."""
@@ -417,7 +440,7 @@ class PassesAPI:
             If the multi-factor authentication token is invalid.
         """
         response = await self._session.post(
-            "https://www.passes.com/api/auth/check-mfa-token",
+            "https://www.passes.com/api/auth/mfa/mfa-token/check",
             headers={"Authorization": f"Bearer {access_token}"},
             json={"token": mfa_token},
             raise_for_status=False,
@@ -833,7 +856,7 @@ class PassesAPI:
 
     async def download_media(
         self,
-        media_url: str,
+        media: Media,
         output_dir: Path,
         *,
         force_download: bool = False,
@@ -841,12 +864,12 @@ class PassesAPI:
         done_callback: Optional[Callable[[], Any]] = None,
     ) -> Path:
         """
-        Download media from a URL.
+        Download media content.
 
         Parameters
         ----------
-        media_url : str
-            The URL of the media to download.
+        media : Media
+            The media to download.
         output_dir : Path
             The directory to save the downloaded media to.
         force_download : bool, optional
@@ -862,57 +885,19 @@ class PassesAPI:
         -------
         Path
             The path to the downloaded media.
-
-        Raises
-        ------
-        InvalidURLError
-            If the media URL is invalid.
         """
-        url_match = re.match(
-            r"https://cdnpasses\.com/(fan-)?media/"
-            r"(([a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12})/){1,2}"
-            r"([a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12})"
-            r"(-[a-z]{2})?(\.[a-z0-9]+)",
-            media_url,
-        )
-
-        if url_match is None:
-            raise InvalidURLError(media_url)
-
         if creator_folder:
-            username = await self.get_username(url_match.group(3))
+            username = await self.get_username(media.user_id)
             output_dir = output_dir / username
 
         output_dir.mkdir(parents=True, exist_ok=True)
-        incomplete_media_path = output_dir / url_match.group(5)
+        base_media_path = Path(output_dir / media.content_id)
 
-        if url_match.group(8) == ".m3u8":
-            media_path = incomplete_media_path.with_suffix(".mp4")
-
-            if media_path.exists() and not force_download:
-                if done_callback is not None:
-                    done_callback()
-
-                return media_path
-
-            ffmpeg = (
-                FFmpeg()
-                .option("y")
-                .option("probesize", "10M")
-                .option("analyzeduration", "10M")
-                .input(media_url)
-                .output(media_path)
-            )
-
-            async with self._ffmpeg_semaphore:
-                await ffmpeg.execute()
-
-            if done_callback is not None:
-                done_callback()
-
-            return media_path
-
-        media_path = incomplete_media_path.with_suffix(url_match.group(8))
+        media_path = (
+            base_media_path.with_suffix(".mp4")
+            if media.content_type == "video"
+            else base_media_path.with_suffix(f".{media.extension}")
+        )
 
         if media_path.exists() and not force_download:
             if done_callback is not None:
@@ -920,13 +905,37 @@ class PassesAPI:
 
             return media_path
 
-        response: aiohttp.ClientResponse = await self._retry(
-            self._session.get, media_url
-        )
+        if media.content_type != "video":
+            if not media.is_encrypted:
+                response: aiohttp.ClientResponse = await self._retry(
+                    self._session.get, media.signed_url
+                )
 
-        async with aiofiles.open(media_path, "wb") as file:
-            async for data in response.content.iter_any():
-                await file.write(data)
+                async with aiofiles.open(media_path, "wb") as file:
+                    async for data in response.content.iter_any():
+                        await file.write(data)
+
+                if done_callback is not None:
+                    done_callback()
+
+                return media_path
+
+            media_path = media_path.with_suffix(".mp4")
+
+        async with self._video_semaphore:
+            options = {
+                "outtmpl": str(media_path),
+                "quiet": True,
+                "no_warnings": True,
+                "overwrites": True,
+                "allow_unplayable_formats": True,
+            }
+
+            downloader = yt_dlp.YoutubeDL(options)
+            await asyncio.to_thread(downloader.download, [media.signed_url])
+
+            if media.is_encrypted:
+                media_path = await self._decrypt_and_merge_media(media, media_path)
 
         if done_callback is not None:
             done_callback()

@@ -1,4 +1,4 @@
-"""Error classes for the Passes API wrapper."""
+"""Error classes for the Passes client."""
 
 from typing import Optional
 
@@ -45,3 +45,10 @@ class PlaywrightResponseError(Exception):
 
     def __init__(self, status: int, message: str, url: HttpUrl) -> None:
         super().__init__(f"{status}, message={message!r}, url={url!r}")
+
+
+class MediaDecryptionError(Exception):
+    """An exception raised when media decryption fails."""
+
+    def __init__(self, message: Optional[str] = None) -> None:
+        super().__init__(message or "Media decryption failed due to an error.")
