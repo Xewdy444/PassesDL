@@ -5,6 +5,9 @@ refresh_token = ""
 api_domain = ""
 api_key = ""
 
+[widevine]
+device_path = ""
+
 [authorization.credentials]
 email = ""
 password = ""
