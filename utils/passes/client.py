@@ -304,19 +304,19 @@ class PassesClient:
         MediaDecryptionError
             If the media could not be decrypted.
         """
+        pssh = await self._drm.get_widevine_pssh(media.signed_url)
+
+        if pssh is None:
+            raise MediaDecryptionError("Widevine PSSH not found in manifest.")
+
+        decryption_key = await self._drm.get_decryption_key(pssh)
+
+        if decryption_key is None:
+            raise MediaDecryptionError("Decryption key could not be obtained.")
+
         ffmpeg_command = FFmpeg().option("y").output(media_path)
 
         for file in media_path.parent.glob(f"{media.content_id}.*.*"):
-            pssh = await self._drm.get_widevine_pssh(media.signed_url)
-
-            if pssh is None:
-                raise MediaDecryptionError("Widevine PSSH not found in manifest.")
-
-            decryption_key = await self._drm.get_decryption_key(pssh)
-
-            if decryption_key is None:
-                raise MediaDecryptionError("Decryption key could not be obtained.")
-
             await self._drm.decrypt_file(file, decryption_key)
             ffmpeg_command = ffmpeg_command.input(file)
 
