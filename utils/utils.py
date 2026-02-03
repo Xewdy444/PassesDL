@@ -10,7 +10,13 @@ from typing import Any, List, Optional, Tuple, Type, Union
 from pydantic import BaseModel, FilePath, HttpUrl, PositiveInt
 from pydantic_settings import BaseSettings, TomlConfigSettingsSource
 
-from .passes.utils import BoolMixin, CaptchaSolverConfig, ImageType, VideoType
+from .passes.utils import (
+    BoolMixin,
+    CaptchaSolverConfig,
+    ImageType,
+    MediaType,
+    VideoType,
+)
 
 
 class Args(BaseModel):
@@ -26,12 +32,11 @@ class Args(BaseModel):
     from_timestamp: datetime
     to_timestamp: datetime
     limit: Optional[PositiveInt]
+    media_types: List[MediaType]
     image_type: ImageType
     video_type: VideoType
     force_download: bool
     no_creator_folders: bool
-    only_images: bool
-    only_videos: bool
 
     @classmethod
     def from_namespace(cls, namespace: argparse.Namespace) -> Args:

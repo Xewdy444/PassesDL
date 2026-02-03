@@ -1,6 +1,6 @@
 # PassesDL
 
-A tool for downloading media from www.passes.com. This tool allows you to download images and videos from your gallery or posts in a user's feed or messages with some convenient filtering options. The download process is fast and efficient as the requests and file writes are made asynchronously.
+A tool for downloading media from www.passes.com. This tool allows you to download media from your gallery or posts in a user's feed or messages with some convenient filtering options. The download process is fast and efficient as the requests and file writes are made asynchronously.
 
 ## Installation
 
@@ -78,7 +78,8 @@ You can also provide your own Widevine device (.wvd) by specifying the path to t
 ## Usage
 
 ```
-Usage: main.py [-h] (-a USERNAME | --feed USERNAME | -m USERNAME | -g [USERNAME] | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-it {small,medium,large,original}] [-vt {large,original}] [-fd] [-ncf] [-i | -v]
+Usage: main.py [-h] (-a USERNAME | --feed USERNAME | -m USERNAME | -g [USERNAME] | --urls URLS [URLS ...] | --file FILE) [-o OUTPUT] [--from FROM_TIMESTAMP] [-t TO_TIMESTAMP] [--limit LIMIT] [-mt {image,video,pdf,gif,audio} [{image,video,pdf,gif,audio} ...]]
+               [-it {small,medium,large,original}] [-vt {large,original}] [-fd] [-ncf]
 
 A tool for downloading media from www.passes.com
 
@@ -99,6 +100,8 @@ Options:
   -t, --to TO_TIMESTAMP
                         The creation timestamp of posts to stop downloading media
   --limit LIMIT         The maximum number of posts in the user's feed or messages to download media from
+  -mt, --media-types {image,video,pdf,gif,audio} [{image,video,pdf,gif,audio} ...]
+                        The types of media to download, by default all types
   -it, --image-type {small,medium,large,original}
                         The type of the images to download, by default original
   -vt, --video-type {large,original}
@@ -107,27 +110,25 @@ Options:
                         Force downloading the media even if it already exists in the output directory
   -ncf, --no-creator-folders
                         Don't create subfolders for each creator
-  -i, --images          Only download images
-  -v, --videos          Only download videos
 ```
 
 ## Examples
 
-Download images and videos from posts in a user's feed:
+Download media from posts in a user's feed:
 
     $ python main.py --feed thebigpodwithshaq
 
-Download images and videos from the three most recent accessible posts in a user's messages:
+Download media from the three most recent accessible posts in a user's messages:
 
     $ python main.py --messages thebigpodwithshaq --limit 3
 
-Download images and videos from a list of post URLs:
+Download media from a list of post URLs:
 
     $ python main.py --urls https://www.passes.com/thebigpodwithshaq/fb697c54-2f63-41f0-bdbe-9afd95026566 https://www.passes.com/thebigpodwithshaq/619074e2-22e2-4a70-8bf0-13ae0d2da33e https://www.passes.com/texasonefund/71d233df-0091-4149-8cdf-2f3b6789c07f
 
 Download videos from a file containing a list of post URLs:
 
-    $ python main.py --file urls.txt --videos
+    $ python main.py --file urls.txt --media-types video
 
 ```
 urls.txt:
@@ -140,7 +141,7 @@ https://www.passes.com/texasonefund/71d233df-0091-4149-8cdf-2f3b6789c07f
 
 Download images from posts in a user's feed from a specific time range:
 
-    $ python main.py --feed texasonefund --images --from 2024-07-01T00:00:00 --to 2024-08-31T23:59:59
+    $ python main.py --feed texasonefund --media-types image --from 2024-07-01T00:00:00 --to 2024-08-31T23:59:59
 
 Download all media from your gallery:
 
@@ -149,3 +150,11 @@ Download all media from your gallery:
 Download media from a specific user in your gallery:
 
     $ python main.py --gallery thebigpodwithshaq
+
+Download images and audio files from posts in a user's feed:
+
+    $ python main.py --feed sophiep0wers --media-types image audio
+
+Download PDF files from posts in a user's feed:
+
+    $ python main.py --feed wallstbeats --media-types pdf
