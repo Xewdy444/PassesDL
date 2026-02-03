@@ -2,7 +2,7 @@
 
 from .passes.client import PassesClient, PostFilter
 from .passes.errors import AuthorizationError
-from .passes.utils import CaptchaSolverConfig, ImageType, VideoType
+from .passes.utils import CaptchaSolverConfig, ImageType, MediaType, VideoType
 from .utils import Args, Config
 
 __all__ = [
@@ -11,6 +11,7 @@ __all__ = [
     "AuthorizationError",
     "CaptchaSolverConfig",
     "ImageType",
+    "MediaType",
     "VideoType",
     "Args",
     "Config",

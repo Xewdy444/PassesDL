@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from enum import Enum
+from enum import Enum, auto
 from http.client import responses
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any, Dict, List, Optional
 
 import annotated_types
 from patchright.async_api import Response
@@ -15,6 +15,19 @@ from pydantic import BaseModel, HttpUrl
 from .errors import PlaywrightResponseError
 
 Post = Dict[str, Any]
+
+
+class MediaType(Enum):
+    """Media types available for download."""
+
+    IMAGE = auto()
+    VIDEO = auto()
+    PDF = auto()
+    GIF = auto()
+    AUDIO = auto()
+
+    def __str__(self) -> str:
+        return self.name.lower()
 
 
 class ImageType(Enum):
@@ -61,10 +74,8 @@ class PostFilter:
     ----------
     post : Post
         The post to filter.
-    images : bool, optional
-        Whether to filter posts with images, by default False.
-    videos : bool, optional
-        Whether to filter posts with videos, by default False.
+    media_types : List[MediaType], optional
+        The types of media to filter, by default None.
     accessible_only : bool, optional
         Whether to filter posts with accessible media only, by default False.
     from_timestamp : datetime, optional
@@ -76,22 +87,19 @@ class PostFilter:
     def __init__(
         self,
         *,
-        images: bool = False,
-        videos: bool = False,
+        media_types: Optional[List[MediaType]] = None,
         accessible_only: bool = False,
         from_timestamp: datetime = datetime.min,
         to_timestamp: datetime = datetime.max,
     ) -> None:
-        self.images = images
-        self.videos = videos
+        self.media_types = media_types
         self.accessible_only = accessible_only
         self.from_timestamp = from_timestamp
         self.to_timestamp = to_timestamp
 
     def __repr__(self) -> str:
         return (
-            f"{self.__class__.__name__}(images={self.images!r}, "
-            f"videos={self.videos!r}, "
+            f"{self.__class__.__name__}(media_types={self.media_types!r}, "
             f"accessible_only={self.accessible_only!r}, "
             f"from_timestamp={self.from_timestamp!r}, "
             f"to_timestamp={self.to_timestamp!r})"
@@ -113,11 +121,10 @@ class PostFilter:
         """
         contents = post.get("contents", [post])
 
-        if any((self.images, self.videos)) and not (
-            self.images
-            and any(content["contentType"] in ("image", "gif") for content in contents)
-            or self.videos
-            and any(content["contentType"] == "video" for content in contents)
+        if self.media_types is not None and not any(
+            content["contentType"]
+            in [str(media_type) for media_type in self.media_types]
+            for content in contents
         ):
             return False
 

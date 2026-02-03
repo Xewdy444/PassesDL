@@ -23,6 +23,7 @@ from utils import (
     AuthorizationError,
     Config,
     ImageType,
+    MediaType,
     PassesClient,
     PostFilter,
     VideoType,
@@ -129,6 +130,16 @@ async def main() -> None:
     )
 
     parser.add_argument(
+        "-mt",
+        "--media-types",
+        nargs="+",
+        default=list(MediaType),
+        type=lambda media_type: MediaType[media_type.upper()],
+        help="The types of media to download, by default all types",
+        choices=list(MediaType),
+    )
+
+    parser.add_argument(
         "-it",
         "--image-type",
         default=ImageType.ORIGINAL,
@@ -161,24 +172,6 @@ async def main() -> None:
         "--no-creator-folders",
         action="store_true",
         help="Don't create subfolders for each creator",
-    )
-
-    media_type_group = parser.add_mutually_exclusive_group()
-
-    media_type_group.add_argument(
-        "-i",
-        "--images",
-        action="store_true",
-        help="Only download images",
-        dest="only_images",
-    )
-
-    media_type_group.add_argument(
-        "-v",
-        "--videos",
-        action="store_true",
-        help="Only download videos",
-        dest="only_videos",
     )
 
     args = Args.from_namespace(parser.parse_args())
@@ -270,8 +263,7 @@ async def main() -> None:
     logger.info("Set access token")
 
     post_filter = PostFilter(
-        images=not args.only_videos,
-        videos=not args.only_images,
+        media_types=args.media_types,
         accessible_only=True,
         from_timestamp=args.from_timestamp,
         to_timestamp=args.to_timestamp,
@@ -337,8 +329,7 @@ async def main() -> None:
         for post in posts
         for media in passes.get_media(
             post,
-            images=not args.only_videos,
-            videos=not args.only_images,
+            media_types=args.media_types,
             image_type=args.image_type,
             video_type=args.video_type,
         )

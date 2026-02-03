@@ -32,6 +32,7 @@ from .utils import (
     CaptchaSolverConfig,
     ImageType,
     Media,
+    MediaType,
     Post,
     PostFilter,
     StaticResponse,
@@ -85,8 +86,7 @@ class PassesClient:
     def get_media(
         post: Post,
         *,
-        images: bool = True,
-        videos: bool = True,
+        media_types: Optional[List[MediaType]] = None,
         image_type: ImageType = ImageType.ORIGINAL,
         video_type: VideoType = VideoType.ORIGINAL,
     ) -> List[Media]:
@@ -97,10 +97,9 @@ class PassesClient:
         ----------
         post : Post
             The post to get the media from.
-        images : bool, optional
-            Whether to get images, by default True.
-        videos : bool, optional
-            Whether to get videos, by default True.
+        media_types : Optional[List[MediaType]], optional
+            The types of media to get, by default None.
+            If None, all media types will be retrieved.
         image_type : ImageType, optional
             The type of the images to get, by default ImageType.ORIGINAL.
         video_type : VideoType, optional
@@ -115,12 +114,9 @@ class PassesClient:
         contents = post.get("contents", [post])
 
         for content in contents:
-            if (
-                not images
-                and content["contentType"] in ("image", "gif")
-                or not videos
-                and content["contentType"] == "video"
-            ):
+            if media_types is not None and content["contentType"] not in [
+                str(media_type) for media_type in media_types
+            ]:
                 continue
 
             signed_content = content.get("signedContent")
