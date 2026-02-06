@@ -12,7 +12,7 @@ If you plan on logging in with credentials without a CAPTCHA solving service (on
 
 ### FFmpeg
 
-To download videos, you'll need to install [FFmpeg](https://github.com/FFmpeg/FFmpeg).
+To download videos or encrypted images, you'll need to install [FFmpeg](https://github.com/FFmpeg/FFmpeg).
 
 |   OS    |        Command         |
 | :-----: | :--------------------: |
