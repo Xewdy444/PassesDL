@@ -17,7 +17,23 @@ from .errors import PlaywrightResponseError
 Post = Dict[str, Any]
 
 
-class MediaType(Enum):
+class EnumStrMixin:
+    """A mixin class that adds a string conversion method for enums."""
+
+    name: str
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
+
+class BoolMixin:
+    """A mixin class that adds a boolean conversion method."""
+
+    def __bool__(self) -> bool:
+        return all(bool(value) for value in self.__dict__.values())
+
+
+class MediaType(EnumStrMixin, Enum):
     """Media types available for download."""
 
     IMAGE = auto()
@@ -26,11 +42,8 @@ class MediaType(Enum):
     GIF = auto()
     AUDIO = auto()
 
-    def __str__(self) -> str:
-        return self.name.lower()
 
-
-class ImageType(Enum):
+class ImageType(EnumStrMixin, Enum):
     """Image types available for download."""
 
     SMALL = "signedUrlSm"
@@ -38,18 +51,12 @@ class ImageType(Enum):
     LARGE = "signedUrlLg"
     ORIGINAL = "signedUrlDash"
 
-    def __str__(self) -> str:
-        return self.name.lower()
 
-
-class VideoType(Enum):
+class VideoType(EnumStrMixin, Enum):
     """Video types available for download."""
 
     LARGE = "signedUrl"
     ORIGINAL = "signedUrlDash"
-
-    def __str__(self) -> str:
-        return self.name.lower()
 
 
 class Media(BaseModel):
@@ -194,13 +201,6 @@ class StaticResponse(BaseModel):
     async def json(self) -> str:
         """Get the response body as JSON."""
         return json.loads(self.body)
-
-
-class BoolMixin:
-    """A mixin class that adds a boolean conversion method."""
-
-    def __bool__(self) -> bool:
-        return all(bool(value) for value in self.__dict__.values())
 
 
 class CaptchaSolverConfig(BaseModel, BoolMixin):
