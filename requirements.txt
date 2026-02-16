@@ -12,5 +12,5 @@ rich==14.3.2
 rich_argparse==1.7.2
 tenacity==9.1.4
 toml==0.10.2
-xmltodict==1.0.2
+xmltodict==1.0.3
 yt_dlp==2026.2.4
