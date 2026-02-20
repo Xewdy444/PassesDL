@@ -5,7 +5,7 @@ async_lru==2.1.0
 asyncio_atexit==1.0.1
 patchright==1.58.0
 pydantic==2.12.5
-pydantic_settings==2.13.0
+pydantic_settings==2.13.1
 python_ffmpeg==2.0.12
 pywidevine==1.9.0
 rich==14.3.3
