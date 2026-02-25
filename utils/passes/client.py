@@ -908,10 +908,11 @@ class PassesClient:
                     self._session.get, media.signed_url
                 )
 
-                async with request_context as response:
-                    async with aiofiles.open(media_path, "wb") as file:
-                        async for data in response.content.iter_any():
-                            await file.write(data)
+                async with request_context as response, aiofiles.open(
+                    media_path, "wb"
+                ) as file:
+                    async for data in response.content.iter_any():
+                        await file.write(data)
 
                 if done_callback is not None:
                     done_callback()
