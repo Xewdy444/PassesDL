@@ -335,7 +335,7 @@ class PassesClient:
             FFmpeg()
             .option("y")
             .input(media_path)
-            .output(output_path, options={"vframes": "1"})
+            .output(output_path, options={"frames:v": "1", "quality:v": "1"})
         )
 
         await ffmpeg_image_command.execute()
