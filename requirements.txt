@@ -3,7 +3,7 @@ aiohttp==3.13.5
 annotated_types==0.7.0
 async_lru==2.3.0
 asyncio_atexit==1.0.1
-patchright==1.58.2
+patchright==1.59.1
 pydantic==2.13.3
 pydantic_settings==2.14.0
 python_ffmpeg==2.0.12
