@@ -67,6 +67,7 @@ class Media(BaseModel):
     content_id: str
     content_type: str
     extension: str
+    created_at: datetime
 
     @property
     def is_encrypted(self) -> bool:

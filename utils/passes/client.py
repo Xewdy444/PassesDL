@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 from json import JSONDecodeError
 from pathlib import Path
@@ -156,6 +157,7 @@ class PassesClient:
                     content_id=content["contentId"],
                     content_type=content["contentType"],
                     extension=extension,
+                    created_at=post.get("createdAt") or post["sentAt"],
                 )
             )
 
@@ -902,6 +904,8 @@ class PassesClient:
 
             return media_path
 
+        timestamp = media.created_at.timestamp()
+
         if media.content_type != "video":
             if not media.is_encrypted:
                 request_context: RequestContextManager = await self._retry(
@@ -913,6 +917,8 @@ class PassesClient:
                 ) as file:
                     async for data in response.content.iter_any():
                         await file.write(data)
+
+                os.utime(media_path, (timestamp, timestamp))
 
                 if done_callback is not None:
                     done_callback()
@@ -935,6 +941,8 @@ class PassesClient:
 
             if media.is_encrypted:
                 media_path = await self._decrypt_and_merge_media(media, media_path)
+
+            os.utime(media_path, (timestamp, timestamp))
 
         if done_callback is not None:
             done_callback()
