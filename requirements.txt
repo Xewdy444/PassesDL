@@ -1,6 +1,6 @@
 aiofiles==25.1.0
 aiohttp==3.14.3
-annotated_types==0.7.0
+annotated_types==0.8.0
 async_lru==2.3.0
 asyncio_atexit==1.0.1
 patchright==1.61.2
