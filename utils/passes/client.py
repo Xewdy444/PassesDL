@@ -312,7 +312,7 @@ class PassesClient:
         if pssh is None:
             raise MediaDecryptionError("Widevine PSSH not found in manifest.")
 
-        decryption_key = await self._drm.get_decryption_key(pssh)
+        decryption_key = await self._drm.get_decryption_key(pssh, media.content_id)
 
         if decryption_key is None:
             raise MediaDecryptionError("Decryption key could not be obtained.")

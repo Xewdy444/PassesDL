@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from enum import Enum, auto
 from http.client import responses
@@ -71,7 +72,7 @@ class Media(BaseModel):
 
     @property
     def is_encrypted(self) -> bool:
-        return "/drm2/" in self.signed_url
+        return re.search(r"/drm\d/", self.signed_url) is not None
 
 
 class PostFilter:

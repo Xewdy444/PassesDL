@@ -15,12 +15,7 @@ from async_lru import alru_cache
 from pywidevine import PSSH, Cdm, Device, Key
 from pywidevine.utils import get_binary_path
 
-from .constants import (
-    BUYDRM_SERVICE_CERTIFICATE,
-    DEFAULT_DEVICE,
-    DEFAULT_KEY,
-    DEFAULT_PSSH,
-)
+from .constants import BUYDRM_SERVICE_CERTIFICATE, DEFAULT_DEVICE
 from .utils import HashablePSSH, SecurityLevel
 
 logger = logging.getLogger(__name__)
@@ -105,7 +100,9 @@ class PassesDRM:
         return None
 
     @alru_cache
-    async def get_decryption_key(self, pssh: HashablePSSH) -> Optional[Key]:
+    async def get_decryption_key(
+        self, pssh: HashablePSSH, content_id: str
+    ) -> Optional[Key]:
         """
         Obtain the decryption key for the given Widevine PSSH.
 
@@ -113,22 +110,14 @@ class PassesDRM:
         ----------
         pssh : HashablePSSH
             The Widevine PSSH.
+        content_id : str
+            The ID of the content the PSSH belongs to.
 
         Returns
         -------
         Optional[Key]
             The decryption key if obtained, otherwise None.
         """
-        if pssh == DEFAULT_PSSH:
-            logger.info(
-                "Using default decryption key: %s:%s",
-                DEFAULT_KEY.kid.hex,
-                DEFAULT_KEY.key.hex(),
-                extra={"highlighter": None},
-            )
-
-            return DEFAULT_KEY
-
         session_id = self._cdm.open()
         self._cdm.set_service_certificate(session_id, BUYDRM_SERVICE_CERTIFICATE)
         challenge = self._cdm.get_license_challenge(session_id, pssh)
@@ -138,6 +127,7 @@ class PassesDRM:
             params={
                 "drm-type": "widevine",
                 "drm-code": SecurityLevel.SW_SECURE_CRYPTO.value,
+                "content-id": content_id,
             },
             data=challenge,
         )
@@ -145,7 +135,7 @@ class PassesDRM:
         license_message = await response.read()
         self._cdm.parse_license(session_id, license_message)
 
-        decryption_keys = self._cdm.get_keys(session_id)
+        decryption_keys = self._cdm.get_keys(session_id, "CONTENT")
         self._cdm.close(session_id)
 
         if not decryption_keys:
