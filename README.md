@@ -14,11 +14,12 @@ If you plan on logging in with credentials without a CAPTCHA solving service (on
 
 To download videos or encrypted images, you'll need to install [FFmpeg](https://github.com/FFmpeg/FFmpeg).
 
-|   OS    |        Command         |
-| :-----: | :--------------------: |
-| Debian  | apt-get install ffmpeg |
-|  MacOS  |  brew install ffmpeg   |
-| Windows | winget install ffmpeg  |
+|   OS    |                               Command                               |
+| :-----: | :-----------------------------------------------------------------: |
+| Debian  |                       apt-get install ffmpeg                        |
+| Fedora  | dnf install ffmpeg-free openh264 --enablerepo=fedora-cisco-openh264 |
+|  MacOS  |                         brew install ffmpeg                         |
+| Windows |                        winget install ffmpeg                        |
 
 You can also download the latest static build from [here](https://ffmpeg.org/download.html).
 
