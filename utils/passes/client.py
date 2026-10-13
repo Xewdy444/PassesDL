@@ -317,7 +317,9 @@ class PassesClient:
         if decryption_key is None:
             raise MediaDecryptionError("Decryption key could not be obtained.")
 
-        ffmpeg_command = FFmpeg().option("y").output(media_path)
+        ffmpeg_command = (
+            FFmpeg().option("y").output(media_path, options={"codec": "copy"})
+        )
 
         for file in media_path.parent.glob(f"{media.content_id}.*.*"):
             await self._drm.decrypt_file(file, decryption_key)
