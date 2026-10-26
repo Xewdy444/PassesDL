@@ -13,4 +13,4 @@ rich_argparse==1.8.0
 tenacity==9.2.1
 toml==0.10.2
 xmltodict==1.0.4
-yt_dlp==2026.8.19
+yt_dlp==2026.10.21
